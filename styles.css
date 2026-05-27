@@ -542,14 +542,98 @@ body {
 }
 
 /* --- Responsive --- */
+
+/* 汉堡菜单按钮 */
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #9aafc4;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.sidebar-toggle:hover { color: #fff; }
+
+/* 迷你底部栏（折叠态可见） */
+.sidebar-footer-mini {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.mini-version {
+  font-size: 0.6rem;
+  color: #4a6a8a;
+  letter-spacing: 0.5px;
+}
+.mini-update-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  color: #6a8aaa;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.mini-update-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+/* 侧边栏遮罩层 */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 150;
+}
+.sidebar-overlay.active { display: block; }
+
 @media (max-width: 900px) {
+  .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
+  
+  /* 折叠态默认 */
   .sidebar { width: 60px; }
-  .sidebar-header { padding: 16px 10px; justify-content: center; }
+  .sidebar-header { padding: 14px 8px; justify-content: center; flex-direction: column; gap: 8px; }
+  .logo-icon { width: 32px; height: 32px; font-size: 0.75rem; }
   .logo-text, .nav-item span, .sidebar-footer { display: none; }
   .nav-item { justify-content: center; padding: 10px; }
-  .main-content { margin-left: 60px; padding: 20px 16px; max-width: calc(100vw - 60px); }
+  .sidebar-footer-mini { display: flex; }
+  
+  .main-content { margin-left: 60px; padding: 16px 12px; max-width: calc(100vw - 60px); }
   .dashboard-grid { grid-template-columns: 1fr; }
   .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
+  
+  /* 展开态 overlay */
+  .sidebar.expanded {
+    width: 240px;
+    z-index: 200;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+  }
+  .sidebar.expanded .sidebar-header {
+    flex-direction: row;
+    padding: 24px 20px 20px;
+    justify-content: flex-start;
+  }
+  .sidebar.expanded .logo-icon { width: 40px; height: 40px; font-size: 0.95rem; }
+  .sidebar.expanded .logo-text { display: flex; }
+  .sidebar.expanded .nav-item { justify-content: flex-start; padding: 10px 14px; }
+  .sidebar.expanded .nav-item span { display: inline; }
+  .sidebar.expanded .sidebar-footer { display: block; }
+  .sidebar.expanded .sidebar-footer-mini { display: none; }
+}
+
+/* 中等屏幕：桌面模式在手机上不会过小 */
+@media (min-width: 901px) and (max-width: 1100px) {
+  html { font-size: 16px; }
+  .main-content { padding: 24px 28px; }
+  .page-title { font-size: 1.35rem; }
 }
 
 /* --- Patient Card Actions --- */

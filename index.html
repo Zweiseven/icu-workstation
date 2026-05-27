@@ -19,6 +19,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="logo-icon">ICU</div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
     <div class="logo-text">
       <span class="logo-title">重症工作站</span>
       <span class="logo-sub">Intensive Care Unit</span>
@@ -57,7 +58,10 @@
     <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">检查更新</button>
     <span class="footer-version">v2.6.2300</span>
   </div>
+  <div class="sidebar-footer-mini"><span class="mini-version">v2.6</span><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
 </aside>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- 主内容区 -->
 <main class="main-content" id="mainContent">
@@ -178,6 +182,24 @@ function skipWaitingAndReload() {
     location.reload();
   }, 300);
 }
+// === 侧边栏汉堡菜单切换 ===
+(function setupSidebarToggle() {
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (!sidebar || !toggle || !overlay) return;
+  function open()  { sidebar.classList.add('expanded'); overlay.classList.add('active'); }
+  function close() { sidebar.classList.remove('expanded'); overlay.classList.remove('active'); }
+  toggle.onclick = function() { sidebar.classList.contains('expanded') ? close() : open(); };
+  overlay.onclick = close;
+  // 点击侧边栏内导航项自动收起
+  sidebar.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      if (window.innerWidth <= 900) close();
+    });
+  });
+})();
+
 // === 手动检查更新 ===
 function checkForUpdate(e) {
   const btn = e.target;
