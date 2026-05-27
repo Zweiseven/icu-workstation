@@ -71,18 +71,38 @@
 
 <script src="app.js"></script>
 
+
 <script>
-// 注册 Service Worker
+// 注册 Service Worker + 更新检测
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(() => {
-    console.log('SW registered - PWA ready');
+  let newVersionReady = false;
+
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    console.log('SW registered v' + (new Date()).toISOString().slice(0,16).replace('T',' '));
+
+    // 监听更新
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          newVersionReady = true;
+          console.log('New version ready, waiting for reload');
+        }
+      });
+    });
   }).catch((err) => {
     console.warn('SW registration failed:', err.message);
   });
-}
-// 接收分享的文件（Share Target API）
-if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+
+  // 监听 SW 发来的消息
   navigator.serviceWorker.addEventListener('message', (event) => {
+    // 更新通知
+    if (event.data && event.data.type === 'update-available') {
+      newVersionReady = true;
+      showUpdateBanner(event.data.version);
+    }
+    // 分享文件接收
     if (event.data && event.data.type === 'shared-file') {
       try {
         const imported = JSON.parse(event.data.content);
@@ -97,6 +117,36 @@ if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       }
     }
   });
+
+  // 定期检查更新（每 30 分钟）
+  setInterval(() => {
+    if (!newVersionReady) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg) reg.update();
+      });
+    }
+  }, 30 * 60 * 1000);
+}
+
+// 显示更新横幅
+function showUpdateBanner(version) {
+  // 移除旧横幅
+  const old = document.getElementById('updateBanner');
+  if (old) old.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a6cb5;color:#fff;padding:12px 20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999;display:flex;align-items:center;gap:12px;font-family:system-ui,sans-serif;font-size:0.88rem;animation:slideUp 0.3s ease;';
+  banner.innerHTML = '<span>新版本已就绪</span><button onclick="location.reload()" style="background:#fff;color:#1a6cb5;border:none;padding:6px 14px;border-radius:4px;font-weight:600;cursor:pointer;font-size:0.82rem;">立即更新</button>';
+  document.body.appendChild(banner);
+
+  // 添加动画样式
+  if (!document.getElementById('updateAnimStyle')) {
+    const style = document.createElement('style');
+    style.id = 'updateAnimStyle';
+    style.textContent = '@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+    document.head.appendChild(style);
+  }
 }
 </script></body>
 </html>

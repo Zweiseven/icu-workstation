@@ -1,7 +1,7 @@
 ﻿// ICU 工作站 Service Worker v2.1
 // 离线缓存 + 分享接收 + 静默更新
 
-const CACHE_NAME = 'icu-workstation-v2.1';
+const CACHE_NAME = 'icu-workstation-202605272224';
 const APP_FILES = [
   './',
   './index.html',
@@ -22,11 +22,19 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 激活
+
+// 通知页面有新版本可用
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+    }).then(() => {
+      // 告诉所有打开的页面: 新版本已就绪
+      return self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'update-available', version: '202605272224' });
+        });
+      });
     })
   );
   self.clients.claim();
