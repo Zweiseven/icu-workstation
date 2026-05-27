@@ -54,7 +54,8 @@
       <button class="btn btn-sm" onclick="document.getElementById(\"importFile\").click()" style="flex:1;justify-content:center;font-size:0.7rem;">导入</button>
     </div>
     <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
-    <span class="footer-version">v2.5.2248</span>
+    <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">检查更新</button>
+    <span class="footer-version">v2.6.2300</span>
   </div>
 </aside>
 
@@ -76,61 +77,75 @@
 
 
 <script>
-// ICU 工作站 v2.5 — 自清理 + 强制升级
-const APP_VERSION = '202605272248';
+// ICU 工作站 v2.6 — 定期轮询 + 更新通知横幅
+const APP_VERSION = '202605272300';
 
 (async function bootstrap() {
   if (!('serviceWorker' in navigator)) return;
 
-  // 检查是否被旧版 SW 控制
+  // === 第一道防线：版本不匹配 → 核清理 ===
   const storedVer = localStorage.getItem('_app_version');
   
   if (storedVer !== APP_VERSION) {
-    // 版本不匹配：杀掉旧 SW，清缓存，重载
     console.log('Version mismatch: ' + storedVer + ' -> ' + APP_VERSION);
-    
     const regs = await navigator.serviceWorker.getRegistrations();
-    for (const reg of regs) {
-      await reg.unregister();
-    }
-    
-    // 清空所有缓存
+    for (const reg of regs) await reg.unregister();
     const keys = await caches.keys();
-    for (const key of keys) {
-      await caches.delete(key);
-    }
-    
-    // 标记版本，重载
+    for (const key of keys) await caches.delete(key);
     localStorage.setItem('_app_version', APP_VERSION);
     location.reload();
     return;
   }
 
-  // 版本匹配：正常注册 SW
-  navigator.serviceWorker.register('./sw.js').then((reg) => {
-    console.log('SW registered: ' + APP_VERSION);
+  // === 正常注册 SW ===
+  const reg = await navigator.serviceWorker.register('./sw.js');
+  console.log('SW registered: ' + APP_VERSION);
+  window._swReg = reg;
 
-    // 发现更新时自动重载
-    reg.addEventListener('updatefound', () => {
-      const w = reg.installing;
-      if (w) {
-        w.addEventListener('statechange', () => {
-          if (w.state === 'activated') {
-            localStorage.setItem('_app_version', APP_VERSION);
-            location.reload();
-          }
-        });
+  // === 检测是否有等待中的更新 ===
+  if (reg.waiting && navigator.serviceWorker.controller) {
+    showUpdateBanner();
+  }
+
+  // === 发现新 SW 时追踪其安装状态 ===
+  reg.addEventListener('updatefound', () => {
+    const newWorker = reg.installing;
+    if (!newWorker) return;
+    newWorker.addEventListener('statechange', () => {
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner();
       }
     });
   });
 
-  // 分享文件接收
+  // === 定期轮询更新（每 5 分钟）===
+  setInterval(() => {
+    reg.update().catch(() => {});
+  }, 5 * 60 * 1000);
+
+  // === 页面恢复可见时立即检查 ===
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      reg.update().catch(() => {});
+    }
+  });
+
+  // === 消息监听 ===
   navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'shared-file') {
+    if (!event.data) return;
+    // SW 激活后通知刷新
+    if (event.data.type === 'sw-updated') {
+      console.log('SW updated to: ' + event.data.version);
+      localStorage.setItem('_app_version', APP_VERSION);
+      location.reload();
+    }
+    // 云盘分享文件导入
+    if (event.data.type === 'shared-file') {
       try {
         const imported = JSON.parse(event.data.content);
         if (imported.patients && Array.isArray(imported.patients)) {
-          localStorage.setItem('icu_workstation_v2_backup_' + new Date().toISOString().split('T')[0], localStorage.getItem('icu_workstation_v2') || '{}');
+          const backupKey = 'icu_workstation_v2_backup_' + new Date().toISOString().split('T')[0];
+          localStorage.setItem(backupKey, localStorage.getItem('icu_workstation_v2') || '{}');
           localStorage.setItem('icu_workstation_v2', event.data.content);
           location.reload();
         }
@@ -138,5 +153,53 @@ const APP_VERSION = '202605272248';
     }
   });
 })();
+
+// === 显示更新横幅 ===
+function showUpdateBanner() {
+  if (document.getElementById('updateBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.className = 'update-banner';
+  banner.innerHTML = '<span class="update-banner-text">检测到新版本</span><button class="update-banner-btn" id="btnUpdateNow">立即更新</button><button class="update-banner-close" id="btnUpdateDismiss">\u2715</button>';
+  document.body.appendChild(banner);
+  document.getElementById('btnUpdateNow').onclick = skipWaitingAndReload;
+  document.getElementById('btnUpdateDismiss').onclick = () => { banner.style.display = 'none'; };
+}
+
+// === 通知等待中的 SW 立即激活，然后刷新 ===
+function skipWaitingAndReload() {
+  navigator.serviceWorker.getRegistration().then((r) => {
+    if (r && r.waiting) {
+      r.waiting.postMessage({ type: 'skip-waiting' });
+    }
+  });
+  setTimeout(() => {
+    localStorage.setItem('_app_version', APP_VERSION);
+    location.reload();
+  }, 300);
+}
+// === 手动检查更新 ===
+function checkForUpdate(e) {
+  const btn = e.target;
+  btn.textContent = '检查中...';
+  btn.disabled = true;
+  if (window._swReg) {
+    window._swReg.update().then(() => {
+      setTimeout(() => {
+        if (window._swReg.waiting) {
+          showUpdateBanner();
+        }
+        btn.textContent = '已是最新';
+        setTimeout(() => { btn.textContent = '检查更新'; btn.disabled = false; }, 2000);
+      }, 500);
+    }).catch(() => {
+      btn.textContent = '检查失败';
+      setTimeout(() => { btn.textContent = '检查更新'; btn.disabled = false; }, 2000);
+    });
+  } else {
+    btn.textContent = 'SW 未注册';
+    setTimeout(() => { btn.textContent = '检查更新'; btn.disabled = false; }, 2000);
+  }
+}
 </script></body>
 </html>
