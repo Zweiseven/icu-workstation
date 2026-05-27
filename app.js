@@ -30,7 +30,92 @@ const OUTCOME_TYPES = [
   { value: 'death', label: '死亡', cssClass: 'outcome-death', icon: '\u2020' },
 ];
 
-// --- 状态 ---
+
+// --- 版本更新日志 ---
+const VERSION_HISTORY = [
+  { v:"v2.9", date:"2026-05-28", changes:[
+    "移除文献检索模块，精简为核心四模块",
+    "侧边栏导航：病区总览、患者详情、交班记录、转归管理",
+  ]},
+  { v:"v2.8", date:"2026-05-27", changes:[
+    "文献检索从 PubMed 改为中文临床诊疗指南检索",
+    "内置 50 条 ICU 指南本地索引（中华医学期刊网+医脉通）",
+    "DuckDuckGo 联网扩展搜索（无需 API Key）",
+    "12 个快速搜索标签（脓毒症、ARDS、镇静、CRRT 等）",
+    "转归管理：新增关键词检索（姓名/床号/诊断）",
+    "转归管理：按月份下拉筛选 + 分组归纳展示",
+  ]},
+  { v:"v2.7.1", date:"2026-05-27", changes:[
+    "修复 Share Target 不出现：放宽文件类型接受范围",
+    "分享数据改用 Cache API 存储，冷启动不丢失",
+    "同步面板添加 PWA 必须安装到主屏幕的提示",
+  ]},
+  { v:"v2.7", date:"2026-05-27", changes:[
+    "统一数据同步入口：合并为侧边栏单个「数据同步」按钮",
+    "手机端一键分享到云盘（Web Share API）",
+    "桌面端云盘自动同步（File System Access API）",
+    "同步面板自适应桌面/手机，带清晰操作指引",
+  ]},
+  { v:"v2.6.2", date:"2026-05-26", changes:[
+    "汉堡菜单按钮扩大到 48px 触控目标（手机友好）",
+    "添加 touchend 事件兜底（部分安卓 WebView click 不触发）",
+    "侧边栏底部 safe-area-inset-bottom 适配",
+  ]},
+  { v:"v2.6.1", date:"2026-05-26", changes:[
+    "手机端：汉堡菜单 + overlay 展开完整侧边栏",
+    "折叠态迷你底部栏：显示版本号和更新/同步按钮",
+    "中等屏幕（901–1100px）字体优化",
+  ]},
+  { v:"v2.6", date:"2026-05-26", changes:[
+    "PWA 定期轮询更新：每 5 分钟自动检查 SW 更新",
+    "页面可见性恢复时立即触发更新检查",
+    "检测到新版本弹出横幅通知（非强制刷新）",
+    "侧边栏手动「检查更新」按钮",
+    "SW 首次安装自动激活，更新安装等用户确认",
+  ]},
+  { v:"v2.5", date:"2026-05-25", changes:[
+    "版本号驱动的自清理机制",
+    "检测旧版 SW 自动杀进程、清缓存、重装",
+  ]},
+  { v:"v2.4", date:"2026-05-25", changes:[
+    "网络优先 HTML 加载策略",
+    "强制重载 + 版本号显示",
+  ]},
+  { v:"v2.3", date:"2026-05-25", changes:[
+    "四重 SW 更新检测：updatefound + controllerchange + waiting + postMessage",
+  ]},
+  { v:"v2.2", date:"2026-05-25", changes:[
+    "自动版本检测 + 更新通知横幅",
+  ]},
+  { v:"v2.1", date:"2026-05-25", changes:[
+    "首次发布 PWA：病区总览、患者详情、交班记录、转归管理",
+    "云同步（File System Access API）",
+    "导出/导入 JSON 备份",
+    "Share Target 接收云盘分享",
+  ]},
+];
+
+function showChangelog() {
+  let body = '';
+  VERSION_HISTORY.forEach(entry => {
+    body += '<div style="margin-bottom:16px;">' +
+      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">' +
+        '<span style="font-weight:700;font-size:1rem;color:var(--primary-dark);">' + entry.v + '</span>' +
+        '<span style="font-size:0.72rem;color:var(--text-muted);">' + entry.date + '</span>' +
+      '</div>' +
+      '<ul style="margin:0;padding-left:18px;font-size:0.82rem;color:var(--text-secondary);line-height:1.8;">';
+    entry.changes.forEach(c => {
+      body += '<li>' + escHtml(c) + '</li>';
+    });
+    body += '</ul></div>';
+  });
+
+  showModal('更新日志', body, function() { closeModal(); });
+  setTimeout(() => {
+    const saveBtn = document.getElementById('modalSaveBtn');
+    if (saveBtn) saveBtn.textContent = '关闭';
+  }, 50);
+}// --- 状态 ---
 let state = {
   patients: [],
   currentView: 'dashboard',
