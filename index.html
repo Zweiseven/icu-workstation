@@ -19,7 +19,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="logo-icon">ICU</div>
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="菜单"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
     <div class="logo-text">
       <span class="logo-title">重症工作站</span>
       <span class="logo-sub">Intensive Care Unit</span>
@@ -182,23 +182,35 @@ function skipWaitingAndReload() {
     location.reload();
   }, 300);
 }
-// === 侧边栏汉堡菜单切换 ===
+// === 侧边栏汉堡菜单切换（触控优化）===
 (function setupSidebarToggle() {
   var sidebar = document.getElementById('sidebar');
   var toggle = document.getElementById('sidebarToggle');
   var overlay = document.getElementById('sidebarOverlay');
   if (!sidebar || !toggle || !overlay) return;
+
   function open()  { sidebar.classList.add('expanded'); overlay.classList.add('active'); }
   function close() { sidebar.classList.remove('expanded'); overlay.classList.remove('active'); }
-  toggle.onclick = function() { sidebar.classList.contains('expanded') ? close() : open(); };
-  overlay.onclick = close;
-  // 点击侧边栏内导航项自动收起
+  function toggleFn(e) { e.preventDefault(); sidebar.classList.contains('expanded') ? close() : open(); }
+
+  // 同时绑定 click 和 touchend（防止某些安卓WebView click 不触发）
+  toggle.addEventListener('click', toggleFn);
+  toggle.addEventListener('touchend', function(e) {
+    // 只在不支持 pointer 事件的场景下用 touchend 兜底
+    if (!window.PointerEvent) { toggleFn(e); }
+  });
+  overlay.addEventListener('click', close);
+  overlay.addEventListener('touchend', function(e) {
+    if (!window.PointerEvent) close();
+  });
+
   sidebar.querySelectorAll('.nav-item').forEach(function(item) {
     item.addEventListener('click', function() {
       if (window.innerWidth <= 900) close();
     });
   });
 })();
+
 
 // === 手动检查更新 ===
 function checkForUpdate(e) {

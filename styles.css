@@ -56,6 +56,7 @@ body {
   top: 0; left: 0; bottom: 0;
   z-index: 100;
   overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
 }
 .sidebar-header {
   padding: 24px 20px 20px;
@@ -550,12 +551,17 @@ body {
   border: none;
   color: #9aafc4;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 12px;
+  border-radius: var(--radius);
   flex-shrink: 0;
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 48px;
+  min-height: 48px;
 }
-.sidebar-toggle:hover { color: #fff; }
+.sidebar-toggle:hover { color: #fff; background: var(--sidebar-hover); }
+.sidebar-toggle:active { color: #fff; background: rgba(255,255,255,0.08); }
 
 /* 迷你底部栏（折叠态可见） */
 .sidebar-footer-mini {
@@ -563,11 +569,11 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 12px 6px;
+  padding: 14px 4px calc(14px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(255,255,255,0.06);
 }
 .mini-version {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: #4a6a8a;
   letter-spacing: 0.5px;
 }
@@ -577,11 +583,12 @@ body {
   border-radius: var(--radius);
   color: #6a8aaa;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+  min-width: 36px; min-height: 36px;
 }
 .mini-update-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
 
