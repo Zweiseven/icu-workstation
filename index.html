@@ -48,17 +48,12 @@
     </button>
   </nav>
   <div class="sidebar-footer">
-    <button class="btn btn-sm" id="btnCloudSync" onclick="showCloudSyncSetup()" style="width:100%;margin-bottom:6px;justify-content:center;font-size:0.75rem;">启用云同步</button>
+    <button class="btn btn-sm btn-primary" onclick="showSyncPanel()" style="width:100%;margin-bottom:4px;justify-content:center;font-size:0.8rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>数据同步</button>
     <span class="footer-badge" id="syncStatus">本地运行 · 数据不上传</span>
-    <div style="display:flex;gap:4px;margin-top:4px;">
-      <button class="btn btn-sm" onclick="exportData()" style="flex:1;justify-content:center;font-size:0.7rem;">导出</button>
-      <button class="btn btn-sm" onclick="document.getElementById(\"importFile\").click()" style="flex:1;justify-content:center;font-size:0.7rem;">导入</button>
-    </div>
-    <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
-    <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">检查更新</button>
     <span class="footer-version">v2.6.2300</span>
   </div>
-  <div class="sidebar-footer-mini"><span class="mini-version">v2.6</span><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
+  <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
+  <div class="sidebar-footer-mini"><span class="mini-version">v2.6</span><button class="mini-update-btn" onclick="showSyncPanel()" title="数据同步"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
 </aside>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>

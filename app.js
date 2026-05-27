@@ -1081,104 +1081,120 @@ saveState = function() {
   }).catch(() => {});
 };
 // ============================================
-//  云盘文件夹检测
+//  数据同步面板（统一入口）
 // ============================================
-async function detectCloudFolders() {
-  const folders = [];
-  const home = (() => { try { return process?.env?.USERPROFILE || process?.env?.HOME || ''; } catch(e) { return ''; } })();
 
-  // OneDrive 常见路径
-  const onedrivePaths = [];
-  if (home) {
-    onedrivePaths.push(home + '\\OneDrive');
-    onedrivePaths.push(home + '\\OneDrive - ' + (process?.env?.USERDOMAIN || ''));
-  }
-  // 尝试从环境变量获取
-  const onedriveCommercial = (() => { try { return process?.env?.OneDriveCommercial || ''; } catch(e) { return ''; } })();
-  if (onedriveCommercial) onedrivePaths.push(onedriveCommercial);
-  const onedriveConsumer = (() => { try { return process?.env?.OneDriveConsumer || ''; } catch(e) { return ''; } })();
-  if (onedriveConsumer) onedrivePaths.push(onedriveConsumer);
-
-  // 百度网盘
-  const baiduPaths = [];
-  if (home) {
-    baiduPaths.push(home + '\\BaiduNetdiskWorkspace');
-    baiduPaths.push(home + '\\BaiduNetdisk');
-    baiduPaths.push(home + '\\BaiduNetdiskDownload');
-  }
-
-  // WPS 云盘
-  const wpsPaths = [];
-  if (home) {
-    wpsPaths.push(home + '\\Documents\\WPS Cloud Files');
-    wpsPaths.push(home + '\\WPSCloud');
-  }
-
-  // 检查路径是否存在（仅限 Windows + Node.js 环境，浏览器端降级）
-  // 在浏览器中，我们无法直接检测文件夹，所以改为提供常见路径参照
-  // 这里使用 try-catch 确保纯浏览器环境也能正常工作
-
-  const results = {
-    onedrive: { name: 'OneDrive', icon: '☁️', paths: onedrivePaths, found: false, bestPath: '' },
-    baidu: { name: '百度网盘', icon: '📀', paths: baiduPaths, found: false, bestPath: '' },
-    wps: { name: 'WPS 云文档', icon: '📝', paths: wpsPaths, found: false, bestPath: '' },
+// 智能导出：手机用 Web Share API 分享到云盘，桌面下载
+async function smartExport() {
+  const exportObj = {
+    version: '2.6',
+    updatedAt: new Date().toISOString(),
+    patients: state.patients,
   };
+  const jsonStr = JSON.stringify(exportObj, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const file = new File([blob], 'icu_data_' + todayStr() + '.json', { type: 'application/json' });
 
-  // 浏览器端: 直接返回路径列表，让用户手动导航
-  // 这样在任何环境下都能工作
-  return results;
+  // 手机端：Web Share API → 直接分享到云盘 App
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'ICU 工作站数据备份' });
+      toast('已发送到云盘', 'success');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // 桌面 / 降级：下载文件
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ICU工作站_数据备份_' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('数据已导出', 'success');
 }
 
-// 显示云同步设置面板
-function showCloudSyncSetup() {
-  let body = '<p style="margin-bottom:8px;color:var(--text-secondary);">选择云盘同步文件夹保存数据文件，即可实现电脑与手机自动同步。</p>';
+// 统一同步面板
+function showSyncPanel() {
+  const hasCloudSync = supportsCloudSync();
+  let body = '';
 
-  body += '<div style="margin-bottom:12px;">' +
-    '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;">' +
-      '<span style="font-size:1.2rem;">☁️</span>' +
-      '<div style="flex:1;"><strong>OneDrive</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">通常是 C:\\Users\\用户名\\OneDrive</span></div>' +
-      '<button class="btn btn-primary btn-sm" onclick="saveToCloudFolder(\'OneDrive\')">选择</button>' +
-    '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;">' +
-      '<span style="font-size:1.2rem;">📀</span>' +
-      '<div style="flex:1;"><strong>百度网盘</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">通常在 BaiduNetdiskWorkspace 文件夹</span></div>' +
-      '<button class="btn btn-primary btn-sm" onclick="saveToCloudFolder(\'BaiduNetdisk\')">选择</button>' +
-    '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;">' +
-      '<span style="font-size:1.2rem;">📝</span>' +
-      '<div style="flex:1;"><strong>WPS 云文档</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">通常在 文档\\WPS Cloud Files</span></div>' +
-      '<button class="btn btn-primary btn-sm" onclick="saveToCloudFolder(\'WPS\')">选择</button>' +
-    '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);">' +
-      '<span style="font-size:1.2rem;">📁</span>' +
-      '<div style="flex:1;"><strong>其他文件夹</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">手动选择任意同步文件夹</span></div>' +
-      '<button class="btn btn-sm" onclick="enableCloudSync()">选择</button>' +
+  // === 桌面端：云盘自动同步 ===
+  if (hasCloudSync) {
+    body += '<div style="background:var(--primary-light);border-radius:var(--radius);padding:14px;margin-bottom:14px;">' +
+      '<div style="font-weight:600;color:var(--primary-dark);margin-bottom:4px;">桌面端 · 云盘自动同步</div>' +
+      '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">选择云盘文件夹中的文件后，每次修改自动保存。云盘会自动把最新数据同步到手机。</p>' +
+      '</div>';
+
+    body += '<button class="btn btn-primary" id="btnStartCloudSync" style="width:100%;margin-bottom:10px;justify-content:center;">选择云盘文件，启用自动同步</button>';
+    body += '<div id="syncPanelStatus" style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-bottom:4px;"></div>';
+  }
+
+  // === 手动操作（两端通用）===
+  body += '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">' +
+    '<p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">手动操作</p>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<button class="btn" onclick="smartExport();closeModal()" style="flex:1;justify-content:center;">' +
+        (hasCloudSync ? '导出备份' : '分享到云盘') +
+      '</button>' +
+      '<button class="btn" onclick="document.getElementById(\'importFile\').click();closeModal()" style="flex:1;justify-content:center;">从文件导入</button>' +
     '</div>' +
   '</div>';
 
-  body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:8px;font-size:0.8rem;color:var(--text-secondary);">' +
-    '<strong>📱 手机端设置</strong><br>' +
-    '1. 手机打开同一 HTML 文件<br>' +
-    '2. 点击侧边栏「导入」按钮<br>' +
-    '3. 从云盘 App 中选择 icu_data.json<br>' +
-    '4. 修改后点击「导出」保存回云盘<br>' +
-    '<br><strong>💡 提示:</strong> 每次下班前点一下导出即可。' +
-  '</div>';
+  // === 同步指南 ===
+  if (!hasCloudSync) {
+    body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
+      '<strong>同步方法</strong><br>' +
+      '<strong>电脑 → 手机：</strong> 电脑导出 → 保存到云盘 → 手机云盘App → 找到文件 → 分享 → 选「ICU工作站」<br>' +
+      '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 选云盘App保存 → 电脑点「从文件导入」' +
+    '</div>';
+  } else {
+    body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
+      '<strong>手机端同步</strong><br>' +
+      '电脑已通过云盘自动同步。手机同步：<br>' +
+      '① 打开云盘 App → 找到 icu_data.json<br>' +
+      '② 分享该文件 → 选择「ICU 工作站」即可导入' +
+    '</div>';
+  }
 
-  showModal('云同步设置', body, function() { closeModal(); });
-  // 把取消按钮改为关闭
+  showModal('数据同步', body, function() { closeModal(); });
+
+  // 检查是否已有同步文件
+  setTimeout(async () => {
+    if (!hasCloudSync) return;
+    const statusEl = document.getElementById('syncPanelStatus');
+    const btnEl = document.getElementById('btnStartCloudSync');
+    if (!statusEl || !btnEl) return;
+    try {
+      const h = await getFileHandle();
+      if (h) {
+        statusEl.textContent = '✓ 云同步已启用 — 每次修改自动保存';
+        statusEl.style.color = 'var(--success)';
+        btnEl.textContent = '重新选择云盘文件';
+      }
+    } catch(e) {}
+  }, 100);
+
+  // 绑定云同步按钮
   setTimeout(() => {
-    const cancelBtn = document.querySelector('#modalOverlay .modal-footer .btn:first-child');
-    if (cancelBtn) cancelBtn.textContent = '关闭';
+    const btn = document.getElementById('btnStartCloudSync');
+    if (btn) btn.onclick = startCloudSync;
+  }, 100);
+
+  // 改保存按钮为关闭
+  setTimeout(() => {
+    const saveBtn = document.getElementById('modalSaveBtn');
+    if (saveBtn) saveBtn.textContent = '关闭';
   }, 50);
 }
 
-// 保存到指定云盘文件夹
-async function saveToCloudFolder(cloudType) {
-  if (!supportsCloudSync()) {
-    toast('当前浏览器不支持此功能，请使用 Chrome 或 Edge', 'error');
-    return;
-  }
+// 启动云同步
+async function startCloudSync() {
+  if (!supportsCloudSync()) return;
   try {
     const handle = await window.showSaveFilePicker({
       suggestedName: 'icu_data.json',
@@ -1188,7 +1204,7 @@ async function saveToCloudFolder(cloudType) {
     await writeToSyncFile(handle);
     updateSyncStatus(true);
     closeModal();
-    toast('已保存到 ' + cloudType + ' 文件夹。数据将自动同步。', 'success');
+    toast('云同步已启用，数据将自动保存', 'success');
   } catch(e) {
     if (e.name !== 'AbortError') {
       toast('保存失败: ' + e.message, 'error');
