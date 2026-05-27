@@ -579,104 +579,195 @@ function generateHandover() {
   toast('交班记录已生成', 'success');
 }
 // ============================================
-//  4. 转归管理 (Outcome Management)
+//  4. 转归管理（检索 + 按月归纳）
 // ============================================
+
+let outcomeState = { filter: 'all', search: '', month: '' };
+
 function renderOutcome(main) {
+  // 维度切换 persistent
+  if (!main._outcomeInited) {
+    outcomeState = { filter: 'all', search: '', month: '' };
+    main._outcomeInited = true;
+  }
+
   const terminated = state.patients.filter(p => p.outcome);
   const total = state.patients.length;
   const active = state.patients.filter(p => !p.outcome).length;
   const counts = { transfer: 0, discharged: 0, ama: 0, death: 0 };
   terminated.forEach(p => { if (counts[p.outcome.type] !== undefined) counts[p.outcome.type]++; });
 
-  let html = '<div class="page-header"><div><h1 class="page-title">转归管理</h1><p class="page-subtitle">累计管理 ' + total + ' 人 \u00b7 在科 ' + active + ' 人 \u00b7 已转归 ' + terminated.length + ' 人</p></div></div>';
-
   // 统计卡片
+  let html = '<div class="page-header"><div><h1 class="page-title">转归管理</h1><p class="page-subtitle">累计管理 ' + total + ' 人 · 在科 ' + active + ' 人 · 已转归 ' + terminated.length + ' 人</p></div></div>';
+
   html += '<div class="outcome-stats-grid">' +
-    '<div class="outcome-stat-card outcome-stat-all" onclick="showAllOutcomes()"><div class="outcome-stat-number">' + total + '</div><div class="outcome-stat-label">累计管理</div></div>' +
-    '<div class="outcome-stat-card outcome-stat-transfer" onclick="filterOutcomes(\'transfer\')"><div class="outcome-stat-number">' + counts.transfer + '</div><div class="outcome-stat-label">转出</div></div>' +
-    '<div class="outcome-stat-card outcome-stat-discharged" onclick="filterOutcomes(\'discharged\')"><div class="outcome-stat-number">' + counts.discharged + '</div><div class="outcome-stat-label">好转出院</div></div>' +
-    '<div class="outcome-stat-card outcome-stat-ama" onclick="filterOutcomes(\'ama\')"><div class="outcome-stat-number">' + counts.ama + '</div><div class="outcome-stat-label">自动出院</div></div>' +
-    '<div class="outcome-stat-card outcome-stat-death" onclick="filterOutcomes(\'death\')"><div class="outcome-stat-number">' + counts.death + '</div><div class="outcome-stat-label">死亡</div></div>' +
+    '<div class="outcome-stat-card outcome-stat-all" onclick="outcomeFilterBy(\'all\')"><div class="outcome-stat-number">' + total + '</div><div class="outcome-stat-label">累计管理</div></div>' +
+    '<div class="outcome-stat-card outcome-stat-transfer" onclick="outcomeFilterBy(\'transfer\')"><div class="outcome-stat-number">' + counts.transfer + '</div><div class="outcome-stat-label">转出</div></div>' +
+    '<div class="outcome-stat-card outcome-stat-discharged" onclick="outcomeFilterBy(\'discharged\')"><div class="outcome-stat-number">' + counts.discharged + '</div><div class="outcome-stat-label">好转出院</div></div>' +
+    '<div class="outcome-stat-card outcome-stat-ama" onclick="outcomeFilterBy(\'ama\')"><div class="outcome-stat-number">' + counts.ama + '</div><div class="outcome-stat-label">自动出院</div></div>' +
+    '<div class="outcome-stat-card outcome-stat-death" onclick="outcomeFilterBy(\'death\')"><div class="outcome-stat-number">' + counts.death + '</div><div class="outcome-stat-label">死亡</div></div>' +
   '</div>';
 
-  // 转归列表
-  html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">' +
-    '<button class="btn btn-sm btn-primary" id="btnOutcomeAll" onclick="showAllOutcomes()">全部</button>' +
-    '<button class="btn btn-sm" id="btnOutcomeTransfer" onclick="filterOutcomes(\'transfer\')">转出</button>' +
-    '<button class="btn btn-sm" id="btnOutcomeDischarged" onclick="filterOutcomes(\'discharged\')">好转出院</button>' +
-    '<button class="btn btn-sm" id="btnOutcomeAma" onclick="filterOutcomes(\'ama\')">自动出院</button>' +
-    '<button class="btn btn-sm" id="btnOutcomeDeath" onclick="filterOutcomes(\'death\')">死亡</button>' +
-    '<button class="btn btn-sm" id="btnOutcomeActive" onclick="filterOutcomes(\'active\')">在科患者</button>' +
+  // 类型筛选 + 检索栏
+  html += '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">' +
+    buildOutcomeBtn('all', '全部') +
+    buildOutcomeBtn('transfer', '转出') +
+    buildOutcomeBtn('discharged', '好转出院') +
+    buildOutcomeBtn('ama', '自动出院') +
+    buildOutcomeBtn('death', '死亡') +
+    buildOutcomeBtn('active', '在科患者') +
   '</div>';
 
+  // 检索 + 月份筛选
+  const months = getAvailableMonths();
+  html += '<div class="outcome-search-bar">' +
+    '<input class="form-input" id="outcomeSearch" placeholder="检索姓名 / 床号 / 诊断..." value="' + escHtml(outcomeState.search) + '" style="flex:1;max-width:240px;">' +
+    '<select class="form-select" id="outcomeMonth" style="max-width:160px;">' +
+      '<option value="">全部月份</option>';
+  months.forEach(m => {
+    html += '<option value="' + m.value + '"' + (outcomeState.month === m.value ? ' selected' : '') + '>' + escHtml(m.label) + ' (' + m.count + ')</option>';
+  });
+  html += '</select>' +
+    '<button class="btn btn-sm" onclick="outcomeClearFilters()">清除筛选</button>' +
+  '</div>';
+
+  // 月份归纳结果
   html += '<div id="outcomeList"></div>';
 
   main.innerHTML = html;
-  showAllOutcomes();
+
+  document.getElementById('outcomeSearch').oninput = function() {
+    outcomeState.search = this.value;
+    doOutcomeRender();
+  };
+  document.getElementById('outcomeMonth').onchange = function() {
+    outcomeState.month = this.value;
+    doOutcomeRender();
+  };
+
+  doOutcomeRender();
 }
 
-function showAllOutcomes() {
-  updateOutcomeFilterBtns('all');
-  renderOutcomeList('all');
+function buildOutcomeBtn(type, label) {
+  const active = outcomeState.filter === type;
+  return '<button class="btn btn-sm' + (active ? ' btn-primary' : '') + '" onclick="outcomeFilterBy(\'' + type + '\')">' + label + '</button>';
 }
 
-function filterOutcomes(type) {
-  updateOutcomeFilterBtns(type);
-  renderOutcomeList(type);
+function outcomeFilterBy(type) {
+  outcomeState.filter = type;
+  doOutcomeRender();
+  // Update button styling
+  const allBtns = document.querySelectorAll('.outcome-stats-grid ~ div .btn-sm');
+  // Best effort: just rerender
+  render(document.getElementById('mainContent'));
 }
 
-function updateOutcomeFilterBtns(type) {
-  const btnIds = ['btnOutcomeAll', 'btnOutcomeTransfer', 'btnOutcomeDischarged', 'btnOutcomeAma', 'btnOutcomeDeath', 'btnOutcomeActive'];
-  btnIds.forEach(id => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    btn.classList.remove('btn-primary');
-    btn.classList.add('btn');
+function outcomeClearFilters() {
+  outcomeState.search = '';
+  outcomeState.month = '';
+  outcomeState.filter = 'all';
+  document.getElementById('outcomeSearch').value = '';
+  document.getElementById('outcomeMonth').value = '';
+  doOutcomeRender();
+}
+
+function getAvailableMonths() {
+  const monthMap = {};
+  state.patients.forEach(p => {
+    const key = (p.outcome ? p.outcome.date : p.admissionDate) || '';
+    if (!key) return;
+    const m = key.substring(0, 7); // YYYY-MM
+    if (!monthMap[m]) monthMap[m] = { value: m, count: 0 };
+    monthMap[m].count++;
   });
-  const map = { all: 'btnOutcomeAll', transfer: 'btnOutcomeTransfer', discharged: 'btnOutcomeDischarged', ama: 'btnOutcomeAma', death: 'btnOutcomeDeath', active: 'btnOutcomeActive' };
-  const activeBtn = document.getElementById(map[type]);
-  if (activeBtn) { activeBtn.classList.remove('btn'); activeBtn.classList.add('btn-primary'); }
+  return Object.values(monthMap).sort((a, b) => b.value.localeCompare(a.value)).map(m => ({
+    value: m.value,
+    label: m.value.replace('-', '年') + '月',
+    count: m.count
+  }));
 }
 
-function renderOutcomeList(filter) {
+function doOutcomeRender() {
   const container = document.getElementById('outcomeList');
   if (!container) return;
 
   let patients;
-  if (filter === 'all') {
-    patients = [...state.patients].reverse();
-  } else if (filter === 'active') {
-    patients = [...state.patients.filter(p => !p.outcome)].reverse();
+  if (outcomeState.filter === 'all') {
+    patients = [...state.patients];
+  } else if (outcomeState.filter === 'active') {
+    patients = [...state.patients.filter(p => !p.outcome)];
   } else {
-    patients = [...state.patients.filter(p => p.outcome && p.outcome.type === filter)].reverse();
+    patients = [...state.patients.filter(p => p.outcome && p.outcome.type === outcomeState.filter)];
   }
 
+  // 检索过滤
+  if (outcomeState.search) {
+    const s = outcomeState.search.toLowerCase();
+    patients = patients.filter(p =>
+      (p.name || '').toLowerCase().includes(s) ||
+      (p.bed || '').toLowerCase().includes(s) ||
+      (p.primaryDiagnosis || '').toLowerCase().includes(s) ||
+      (p.secondaryDiagnoses || '').toLowerCase().includes(s)
+    );
+  }
+
+  // 月份过滤
+  if (outcomeState.month) {
+    patients = patients.filter(p => {
+      const key = (p.outcome ? p.outcome.date : p.admissionDate) || '';
+      return key.startsWith(outcomeState.month);
+    });
+  }
+
+  // 按日期倒序
+  patients.sort((a, b) => {
+    const da = (a.outcome ? a.outcome.date : a.admissionDate) || '';
+    const db = (b.outcome ? b.outcome.date : b.admissionDate) || '';
+    return db.localeCompare(da);
+  });
+
   if (patients.length === 0) {
-    container.innerHTML = '<div class="empty-state"><p>暂无记录</p></div>';
+    container.innerHTML = '<div class="empty-state"><p>暂无符合条件的记录</p></div>';
     return;
   }
 
+  // 按月份分组
   let html = '';
+  let currentMonth = '';
   patients.forEach(p => {
+    const key = (p.outcome ? p.outcome.date : p.admissionDate) || '';
+    const month = key.substring(0, 7);
+    
+    if (month !== currentMonth) {
+      currentMonth = month;
+      const monthPatients = patients.filter(pp => {
+        const k = (pp.outcome ? pp.outcome.date : pp.admissionDate) || '';
+        return k.startsWith(month);
+      });
+      const monthLabel = month ? month.replace('-', '年') + '月' : '日期未知';
+      html += '<div class="outcome-month-header">' +
+        '<span class="outcome-month-title">' + escHtml(monthLabel) + '</span>' +
+        '<span class="outcome-month-count">' + monthPatients.length + ' 例</span>' +
+      '</div>';
+    }
+
     const ot = p.outcome ? OUTCOME_TYPES.find(o => o.value === p.outcome.type) : null;
     html += '<div class="outcome-card">' +
       '<div class="outcome-card-header">' +
         '<div>' +
-          '<div class="outcome-card-patient">' + escHtml(p.name || '未命名') + ' (' + escHtml(p.bed) + ')</div>' +
-          '<div class="outcome-card-meta">' + escHtml(p.primaryDiagnosis || '无诊断') + ' \u00b7 ' + escHtml(p.age || '—') + '岁 \u00b7 ' + escHtml(p.gender) + ' \u00b7 入院: ' + escHtml(p.admissionDate) + '</div>' +
+          '<div class="outcome-card-patient">' + escHtml(p.name || '未命名') + ' <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted);">' + escHtml(p.bed || '') + '</span></div>' +
+          '<div class="outcome-card-meta">' + escHtml(p.primaryDiagnosis || '无诊断') + ' · ' + escHtml(p.age || '—') + '岁 · ' + escHtml(p.gender || '') + ' · 入院: ' + escHtml(p.admissionDate || '—') + '</div>' +
         '</div>' +
-        '<div>' + (p.outcome
-          ? '<span class="outcome-tag ' + (ot ? ot.cssClass : '') + '">' + escHtml(p.outcome.label) + '</span><div style="font-size:0.72rem;color:var(--text-muted);text-align:right;margin-top:2px;">' + escHtml(p.outcome.date) + '</div>'
+        '<div style="text-align:right;">' + (p.outcome
+          ? '<span class="outcome-tag ' + (ot ? ot.cssClass : '') + '">' + escHtml(p.outcome.label) + '</span><div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">' + escHtml(p.outcome.date || '') + '</div>'
           : '<span class="status-tag status-active">在科</span>') +
         '</div>' +
       '</div>';
     if (p.outcome && p.outcome.notes) {
       html += '<div class="outcome-card-note">' + escHtml(p.outcome.notes) + '</div>';
     }
-    // 简要治疗信息
     if (p.antibiotics && p.antibiotics.length > 0) {
-      const abxNames = p.antibiotics.map(a => a.drug).join(', ');
-      html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(abxNames) + '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(p.antibiotics.map(a => a.drug).join(', ')) + '</div>';
     }
     if (p.treatmentNotes && p.treatmentNotes.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);">诊疗记录: ' + p.treatmentNotes.length + ' 条</div>';
@@ -685,93 +776,289 @@ function renderOutcomeList(filter) {
   });
 
   container.innerHTML = html;
-}
+}// ============================================
+//  5. 临床指南检索（中文）
 // ============================================
-//  5. 文献检索 (Literature Search - PubMed)
-// ============================================
-function renderLiterature(main) {
-  let html = '<div class="page-header"><div><h1 class="page-title">文献检索</h1><p class="page-subtitle">PubMed 快速检索 · 重症医学方向</p></div></div>';
 
-  html += '<div class="card" style="margin-bottom:18px"><div class="literature-search"><input class="form-input" id="litSearchInput" placeholder="输入关键词，如: sepsis ARDS guideline, VAP prevention, CRRT citrate..." style="flex:1;max-width:600px;"><button class="btn btn-primary" id="btnLitSearch">检索 PubMed</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'sepsis management guidelines\')">Sepsis 指南</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'ARDS ventilation strategy\')">ARDS 通气策略</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'VAP prevention bundle\')">VAP 预防</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'CRRT anticoagulation citrate\')">CRRT 抗凝</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'vasopressor norepinephrine shock\')">血管活性药物</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'delirium ICU management\')">ICU 谵妄</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'nutrition ICU enteral parenteral\')">ICU 营养支持</button>' +
-    '<button class="btn btn-sm" onclick="quickLitSearch(\'AKI renal replacement timing\')">AKI & RRT</button>' +
-  '</div></div><div id="litResults"><div class="empty-state"><p>输入关键词后点击检索</p></div></div>';
+// --- 中文 ICU 临床指南本地索引 ---
+const GUIDELINE_INDEX = [
+  { t:"中国脓毒症/脓毒性休克急诊治疗指南(2018)", s:"中华急诊医学杂志", y:"2018", u:"https://rs.yiigle.com/CN112138201813/1070211.htm", k:"脓毒症 sepsis 感染性休克 septic shock 液体复苏 血管活性药物 抗菌药物" },
+  { t:"拯救脓毒症运动(SSC)指南2021 中文解读", s:"中华危重病急救医学", y:"2021", u:"https://guide.medlive.cn/guideline/24414", k:"sepsis surviving 脓毒症 1小时集束化治疗" },
+  { t:"中国急性呼吸窘迫综合征(ARDS)诊断和治疗指南", s:"中华医学杂志", y:"2023", u:"https://rs.yiigle.com/CN112150202303/1431057.htm", k:"ARDS 急性呼吸窘迫 机械通气 俯卧位 PEEP 肺保护通气" },
+  { t:"急性呼吸窘迫综合征患者机械通气指南(试行)", s:"中华医学杂志", y:"2016", u:"https://guide.medlive.cn/guideline/11538", k:"ARDS 机械通气 小潮气量 驱动压 俯卧位 肺复张" },
+  { t:"中国成人ICU镇痛和镇静治疗指南", s:"中华危重病急救医学", y:"2018", u:"https://rs.yiigle.com/CN121430201806/1035625.htm", k:"镇静 镇痛 ICU 谵妄 丙泊酚 右美托咪定 咪达唑仑 RASS评分" },
+  { t:"重症患者谵妄管理专家共识", s:"中华内科杂志", y:"2019", u:"https://guide.medlive.cn/guideline/17141", k:"谵妄 delirium CAM-ICU 氟哌啶醇 右美托咪定" },
+  { t:"中国重症患者营养支持治疗指南", s:"中华危重病急救医学", y:"2022", u:"https://rs.yiigle.com/CN121430202204/1381546.htm", k:"营养支持 肠内营养 肠外营养 热量 蛋白质 EN PN" },
+  { t:"ICU获得性衰弱诊断与治疗中国专家共识", s:"中华危重病急救医学", y:"2018", u:"https://guide.medlive.cn/guideline/16765", k:"ICU-AW 获得性衰弱 肌无力 早期活动 康复" },
+  { t:"呼吸机相关性肺炎预防与控制指南", s:"中华医院感染学杂志", y:"2023", u:"https://guide.medlive.cn/guideline/27749", k:"VAP 呼吸机相关肺炎 预防 bundle 口腔护理 声门下吸引" },
+  { t:"连续性肾脏替代治疗(CRRT)临床应用规范", s:"中华医学杂志", y:"2021", u:"https://rs.yiigle.com/CN112150202108/1348056.htm", k:"CRRT 连续性肾替代 枸橼酸抗凝 剂量 AKI RRT" },
+  { t:"急性肾损伤诊治中国专家共识", s:"中华危重病急救医学", y:"2018", u:"https://guide.medlive.cn/guideline/16757", k:"AKI 急性肾损伤 KDIGO 诊断 分期" },
+  { t:"血管活性药物在休克中的应用中国专家共识", s:"中华急诊医学杂志", y:"2019", u:"https://guide.medlive.cn/guideline/18773", k:"血管活性药物 休克 去甲肾上腺素 多巴胺 肾上腺素 血管加压素" },
+  { t:"中国重症患者凝血功能障碍诊疗专家共识", s:"中华危重病急救医学", y:"2020", u:"https://guide.medlive.cn/guideline/21271", k:"凝血功能 DIC 弥漫性血管内凝血 抗凝 血小板" },
+  { t:"中国严重创伤救治指南", s:"中华急诊医学杂志", y:"2021", u:"https://guide.medlive.cn/guideline/23743", k:"创伤 多发伤 出血控制 损伤控制复苏" },
+  { t:"中国颅脑损伤诊治指南", s:"中华神经外科杂志", y:"2019", u:"https://guide.medlive.cn/guideline/17652", k:"颅脑损伤 TBI 颅内压 去骨瓣减压 脑灌注压" },
+  { t:"重症急性胰腺炎诊治中国专家共识", s:"中华消化杂志", y:"2021", u:"https://guide.medlive.cn/guideline/23819", k:"急性胰腺炎 SAP 重症 液体复苏 腹腔间隔室综合征" },
+  { t:"中国心力衰竭诊断和治疗指南", s:"中华心血管病杂志", y:"2018", u:"https://rs.yiigle.com/CN113460201804/1042073.htm", k:"心衰 心力衰竭 正性肌力药物 利尿剂" },
+  { t:"急性ST段抬高型心肌梗死诊断和治疗指南", s:"中华心血管病杂志", y:"2019", u:"https://guide.medlive.cn/guideline/18846", k:"STEMI 心梗 心肌梗死 PCI 抗血小板" },
+  { t:"中国高血压防治指南(2024年修订版)", s:"中华心血管病杂志", y:"2024", u:"https://guide.medlive.cn/guideline/32273", k:"高血压 降压治疗 血压目标" },
+  { t:"中国成人社区获得性肺炎诊断和治疗指南", s:"中华结核和呼吸杂志", y:"2016", u:"https://guide.medlive.cn/guideline/10932", k:"CAP 社区获得性肺炎 抗菌治疗 病原学" },
+  { t:"医院获得性肺炎/呼吸机相关性肺炎诊疗指南", s:"中华结核和呼吸杂志", y:"2018", u:"https://guide.medlive.cn/guideline/16661", k:"HAP VAP 院内获得性肺炎 呼吸机相关肺炎 抗菌治疗" },
+  { t:"中国重症监护病房医院感染预防与控制指南", s:"中华医院感染学杂志", y:"2020", u:"https://guide.medlive.cn/guideline/21407", k:"院感 感染控制 多重耐药菌 MDRO 隔离" },
+  { t:"多重耐药菌医院感染预防与控制中国专家共识", s:"中华医院感染学杂志", y:"2018", u:"https://guide.medlive.cn/guideline/13344", k:"MDRO 多重耐药 CRE MRSA VRE 碳青霉烯耐药" },
+  { t:"碳青霉烯耐药革兰阴性杆菌感染诊治专家共识", s:"中华临床感染病杂志", y:"2022", u:"https://guide.medlive.cn/guideline/26491", k:"CRE CRO 碳青霉烯耐药 替加环素 多黏菌素 头孢他啶阿维巴坦" },
+  { t:"中国鲍曼不动杆菌感染诊治与防控专家共识", s:"中华医学杂志", y:"2018", u:"https://guide.medlive.cn/guideline/10768", k:"鲍曼不动杆菌 Acinetobacter 耐药 舒巴坦" },
+  { t:"中国念珠菌病诊断与治疗专家共识", s:"中华传染病杂志", y:"2020", u:"https://guide.medlive.cn/guideline/20949", k:"念珠菌 真菌感染 棘白菌素 氟康唑 血培养" },
+  { t:"侵袭性真菌病诊断与治疗指南", s:"中华内科杂志", y:"2020", u:"https://guide.medlive.cn/guideline/20948", k:"真菌 IFD 曲霉菌 念珠菌 伏立康唑 棘白菌素" },
+  { t:"中国肺血栓栓塞症诊治与预防指南", s:"中华医学杂志", y:"2018", u:"https://rs.yiigle.com/CN112150201810/1052066.htm", k:"肺栓塞 PE 抗凝 溶栓 D-二聚体" },
+  { t:"深静脉血栓形成诊治指南", s:"中华血管外科杂志", y:"2017", u:"https://guide.medlive.cn/guideline/13928", k:"DVT 深静脉血栓 抗凝 低分子肝素" },
+  { t:"中国急性缺血性脑卒中诊治指南", s:"中华神经科杂志", y:"2018", u:"https://guide.medlive.cn/guideline/16650", k:"脑卒中 脑梗死 溶栓 取栓 tPA" },
+  { t:"自发性脑出血诊治中国专家共识", s:"中华神经外科杂志", y:"2019", u:"https://guide.medlive.cn/guideline/17651", k:"脑出血 颅内出血 血压控制 手术" },
+  { t:"中国重症患者血糖管理专家共识", s:"中华危重病急救医学", y:"2020", u:"https://guide.medlive.cn/guideline/21272", k:"血糖管理 高血糖 低血糖 胰岛素 血糖目标" },
+  { t:"中国急性肾损伤临床实践指南", s:"中华肾脏病杂志", y:"2024", u:"https://guide.medlive.cn/guideline/32098", k:"AKI 急性肾损伤 KDIGO RRT CRRT" },
+  { t:"中国心肺复苏指南", s:"中华急诊医学杂志", y:"2020", u:"https://guide.medlive.cn/guideline/21629", k:"CPR 心肺复苏 心脏骤停 肾上腺素 除颤 ROSC" },
+  { t:"体外膜氧合(ECMO)临床应用中国专家共识", s:"中华医学杂志", y:"2020", u:"https://guide.medlive.cn/guideline/20936", k:"ECMO 体外膜氧合 VV-ECMO VA-ECMO 呼吸衰竭 心源性休克" },
+  { t:"中国重症超声临床应用规范", s:"中华危重病急救医学", y:"2018", u:"https://guide.medlive.cn/guideline/16760", k:"超声 重症超声 血流动力学 容量评估 FAST" },
+  { t:"血流动力学监测与管理中国专家共识", s:"中华危重病急救医学", y:"2021", u:"https://guide.medlive.cn/guideline/24022", k:"血流动力学 监测 PiCCO Swan-Ganz 容量反应性" },
+  { t:"中国成人ICU患者血糖控制专家共识", s:"中华危重病急救医学", y:"2024", u:"https://guide.medlive.cn/guideline/32694", k:"血糖 TGC 强化胰岛素治疗 低血糖" },
+  { t:"中国成人重症患者血小板减少诊疗专家共识", s:"中华危重病急救医学", y:"2020", u:"https://guide.medlive.cn/guideline/21484", k:"血小板减少 血小板输注 HIT 肝素诱导" },
+  { t:"中国输液安全管理指南", s:"中华护理杂志", y:"2018", u:"https://guide.medlive.cn/guideline/16753", k:"输液 静脉通路 CVC PICC 导管相关感染" },
+  { t:"血管内导管相关感染预防与控制指南", s:"中华医院感染学杂志", y:"2021", u:"https://guide.medlive.cn/guideline/24460", k:"CLABSI CRBSI 导管感染 中心静脉导管" },
+  { t:"中国重症患者肠内营养喂养流程专家共识", s:"中华危重病急救医学", y:"2021", u:"https://guide.medlive.cn/guideline/23992", k:"EN 肠内营养 喂养不耐受 幽门后喂养 营养泵" },
+  { t:"中国ICU患者早期活动安全指南", s:"中华危重病急救医学", y:"2022", u:"https://guide.medlive.cn/guideline/26015", k:"早期活动 康复 ICU-AW 安全 离床" },
+  { t:"神经重症患者镇痛镇静中国专家共识", s:"中华危重病急救医学", y:"2020", u:"https://guide.medlive.cn/guideline/21273", k:"神经重症 镇静 镇痛 TBI 颅内压" },
+  { t:"中国重症患者液体复苏指南", s:"中华危重病急救医学", y:"2020", u:"https://guide.medlive.cn/guideline/21688", k:"液体复苏 晶体 胶体 平衡液 生理盐水" },
+  { t:"心源性休克诊治中国专家共识", s:"中华心血管病杂志", y:"2020", u:"https://guide.medlive.cn/guideline/21144", k:"心源性休克 正性肌力药物 血管活性药物 机械辅助" },
+  { t:"中国心脏骤停后综合征诊治指南", s:"中华急诊医学杂志", y:"2021", u:"https://guide.medlive.cn/guideline/24103", k:"PCAS 心脏骤停后 目标温度管理 TTM 脑保护" },
+  { t:"重症患者气道管理专家共识", s:"中华危重病急救医学", y:"2018", u:"https://guide.medlive.cn/guideline/16759", k:"气道管理 气管插管 拔管 气囊管理 吸痰" },
+  { t:"中国危重症患者转运指南", s:"中华危重病急救医学", y:"2019", u:"https://guide.medlive.cn/guideline/18771", k:"转运 危重患者 院际转运 安全" },
+  { t:"ICU内床旁即时超声(POCUS)中国专家共识", s:"中华危重病急救医学", y:"2019", u:"https://guide.medlive.cn/guideline/18768", k:"POCUS 床旁超声 肺超声 心超 FAST" },
+];
+
+// --- 快速搜索标签 ---
+const QUICK_TAGS = [
+  { label:"脓毒症/感染性休克", q:"脓毒症 sepsis 感染性休克" },
+  { label:"ARDS 呼吸衰竭", q:"ARDS 呼吸窘迫 机械通气" },
+  { label:"镇静镇痛谵妄", q:"镇静 镇痛 谵妄" },
+  { label:"营养支持", q:"营养 肠内营养 肠外营养 EN" },
+  { label:"CRRT / AKI", q:"CRRT 肾替代 AKI 急性肾损伤" },
+  { label:"院感防控 VAP", q:"VAP 院感 感染控制 MDRO 多重耐药" },
+  { label:"血流动力学 休克", q:"血流动力学 休克 液体复苏" },
+  { label:"凝血 / DIC", q:"凝血 DIC 血小板 抗凝" },
+  { label:"神经重症", q:"颅脑 脑卒中 脑出血 TBI" },
+  { label:"心肺复苏 / ECMO", q:"CPR 心肺复苏 ECMO 心脏骤停" },
+  { label:"真菌/耐药菌感染", q:"真菌 念珠菌 CRE 碳青霉烯 多重耐药" },
+  { label:"血糖管理", q:"血糖 胰岛素 高血糖" },
+];
+
+// 本地索引搜索
+function searchGuidelines(query) {
+  const q = query.toLowerCase();
+  const results = [];
+  GUIDELINE_INDEX.forEach(g => {
+    const haystack = (g.t + " " + g.s + " " + g.k).toLowerCase();
+    const score = fuzzyScore(q, haystack);
+    if (score > 0) results.push({ ...g, score });
+  });
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, 15);
+}
+
+// 简单模糊评分：匹配到的关键字越多分数越高
+function fuzzyScore(query, haystack) {
+  const terms = query.split(/\s+/).filter(t => t.length > 0);
+  let score = 0;
+  terms.forEach(term => {
+    if (haystack.includes(term)) score += term.length * 2;
+    // 部分匹配
+    for (let i = 0; i <= term.length - 2; i++) {
+      if (haystack.includes(term.substring(i, i + 2))) score += 1;
+    }
+  });
+  return score;
+}
+
+// --- 渲染文献检索页面 ---
+function renderLiterature(main) {
+  let html = '<div class="page-header"><div><h1 class="page-title">临床指南检索</h1><p class="page-subtitle">中文 ICU 临床诊疗指南 · 本地索引' + GUIDELINE_INDEX.length + '条</p></div></div>';
+
+  // 搜索框
+  html += '<div class="card" style="margin-bottom:16px">' +
+    '<div class="guideline-search-bar">' +
+      '<input class="form-input" id="litSearchInput" placeholder="搜索指南，如: 脓毒症、ARDS、CRRT、镇静、真菌感染..." style="flex:1;">' +
+      '<button class="btn btn-primary" id="btnLitSearch">检索</button>' +
+      '<button class="btn btn-sm" id="btnLitDuckDuckGo" style="margin-left:4px;" title="联网扩展搜索">联网搜索</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">';
+
+  QUICK_TAGS.forEach(tag => {
+    html += '<button class="btn btn-sm guide-tag" onclick="quickGuidelineSearch(\'' + escHtml(tag.q) + '\', this)">' + escHtml(tag.label) + '</button>';
+  });
+
+  html += '</div></div>';
+
+  // 结果区域
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">' +
+    '<span style="font-size:0.8rem;color:var(--text-muted);" id="litResultCount"></span>' +
+    '<span style="font-size:0.75rem;color:var(--text-muted);" id="litSourceTag"></span>' +
+  '</div>';
+  html += '<div id="litResults"><div class="empty-state"><p>输入关键词检索中文临床诊疗指南，或点击标签快速筛选</p></div></div>';
 
   main.innerHTML = html;
 
   document.getElementById('btnLitSearch').onclick = () => {
     const query = document.getElementById('litSearchInput').value.trim();
     if (!query) { toast('请输入检索关键词', 'error'); return; }
-    searchPubMed(query);
+    doGuidelineSearch(query, false);
+  };
+  document.getElementById('btnLitDuckDuckGo').onclick = () => {
+    const query = document.getElementById('litSearchInput').value.trim();
+    if (!query) { toast('请输入检索关键词', 'error'); return; }
+    doGuidelineSearch(query, true);
   };
   document.getElementById('litSearchInput').onkeydown = function(e) {
-    if (e.key === 'Enter') document.getElementById('btnLitSearch').click();
+    if (e.key === 'Enter') doGuidelineSearch(this.value.trim(), false);
   };
 }
 
-function quickLitSearch(query) {
-  document.getElementById('litSearchInput').value = query;
-  searchPubMed(query);
+function quickGuidelineSearch(query, btnEl) {
+  document.getElementById('litSearchInput').value = '';
+  // 高亮当前标签
+  document.querySelectorAll('.guide-tag').forEach(b => b.classList.remove('btn-primary'));
+  if (btnEl) { btnEl.classList.remove('btn'); btnEl.classList.add('btn-primary'); }
+  doGuidelineSearch(query, false);
 }
 
-async function searchPubMed(query) {
+async function doGuidelineSearch(query, useDuckDuckGo) {
   const resultsDiv = document.getElementById('litResults');
+  const countEl = document.getElementById('litResultCount');
+  const sourceEl = document.getElementById('litSourceTag');
   if (!resultsDiv) return;
-  resultsDiv.innerHTML = '<div class="empty-state"><p>正在检索 PubMed...</p></div>';
 
-  const fullQuery = '(' + query + ') AND (intensive care[MeSH] OR critical care[MeSH] OR critical illness[MeSH])';
-  try {
-    const esearchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=15&retmode=json&sort=relevance&term=' + encodeURIComponent(fullQuery);
-    const esResp = await fetch(esearchUrl);
-    const esData = await esResp.json();
-    const ids = (esData.esearchresult && esData.esearchresult.idlist) || [];
+  // 先做本地搜索
+  const localResults = searchGuidelines(query);
 
-    if (ids.length === 0) {
-      resultsDiv.innerHTML = '<div class="empty-state"><p>未找到相关文献</p></div>';
-      return;
+  if (localResults.length > 0 && !useDuckDuckGo) {
+    countEl.textContent = '找到 ' + localResults.length + ' 条指南';
+    sourceEl.textContent = '来源：本地索引';
+    renderGuidelineResults(localResults);
+    return;
+  }
+
+  // 本地有结果先展示，同时标注在联网扩展
+  if (localResults.length > 0) {
+    countEl.textContent = '本地找到 ' + localResults.length + ' 条，正在联网扩展搜索...';
+    sourceEl.textContent = '';
+    renderGuidelineResults(localResults);
+  } else {
+    resultsDiv.innerHTML = '<div class="empty-state"><p>正在检索...</p></div>';
+  }
+
+  // DuckDuckGo 联网搜索
+  if (useDuckDuckGo || localResults.length === 0) {
+    try {
+      const ddgQuery = query + ' site:guide.medlive.cn OR site:rs.yiigle.com 临床指南';
+      const ddgUrl = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(ddgQuery);
+      // 通过 CORS 代理或直接抓取（可能被CORS阻止，降级到打开新窗口）
+      const webResults = await searchDuckDuckGo(query);
+      if (webResults.length > 0) {
+        countEl.textContent = '本地 ' + localResults.length + ' + 联网 ' + webResults.length + ' 条';
+        sourceEl.textContent = '来源：本地索引 + DuckDuckGo';
+        const allResults = [...localResults, ...webResults.map(r => ({ ...r, score: 0, isWeb: true }))];
+        renderGuidelineResults(allResults);
+      } else if (localResults.length === 0) {
+        resultsDiv.innerHTML = '<div class="empty-state"><p>未找到相关指南</p><p style="font-size:0.8rem;margin-top:8px;">建议尝试不同的关键词，或使用 <a href="https://guide.medlive.cn/" target="_blank">医脉通指南</a> 搜索</p></div>';
+        countEl.textContent = '';
+        sourceEl.textContent = '';
+      }
+    } catch(e) {
+      if (localResults.length === 0) {
+        resultsDiv.innerHTML = '<div class="empty-state"><p>联网搜索暂不可用</p><p style="font-size:0.8rem;margin-top:8px;">请尝试其他关键词，或直接访问：<br><a href="https://guide.medlive.cn/" target="_blank">医脉通临床指南</a><br><a href="https://rs.yiigle.com/" target="_blank">中华医学期刊网</a></p></div>';
+        countEl.textContent = '';
+        sourceEl.textContent = '';
+      } else {
+        sourceEl.textContent = '来源：本地索引（联网搜索暂不可用）';
+      }
     }
-
-    const efetchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=' + ids.join(',') + '&retmode=xml&rettype=abstract';
-    const efResp = await fetch(efetchUrl);
-    const xmlText = await efResp.text();
-
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-    const articles = xmlDoc.querySelectorAll('PubmedArticle');
-
-    if (articles.length === 0) {
-      resultsDiv.innerHTML = '<div class="empty-state"><p>无法解析文献数据</p></div>';
-      return;
-    }
-
-    let html = '';
-    articles.forEach(article => {
-      const title = article.querySelector('ArticleTitle')?.textContent || '无标题';
-      const pmid = article.querySelector('PMID')?.textContent || '';
-      const journal = article.querySelector('Journal Title')?.textContent || article.querySelector('Title')?.textContent || '';
-      const year = article.querySelector('PubDate Year')?.textContent || '';
-      const authors = [...article.querySelectorAll('Author')].slice(0, 3).map(a =>
-        (a.querySelector('LastName')?.textContent || '') + ' ' + (a.querySelector('ForeName')?.textContent?.charAt(0) || '')
-      ).join(', ') + (article.querySelectorAll('Author').length > 3 ? ' et al.' : '');
-      const abstract = article.querySelector('AbstractText')?.textContent || '';
-
-      html += '<div class="lit-result"><div class="lit-result-title"><a href="https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/" target="_blank" rel="noopener">' + escHtml(title) + '</a></div><div class="lit-result-meta">' + escHtml(authors) + ' · ' + escHtml(journal) + ' · ' + escHtml(year) + ' · PMID: ' + escHtml(pmid) + '</div><div class="lit-result-abstract">' + escHtml(abstract.substring(0, 500)) + (abstract.length > 500 ? '...' : '') + '</div></div>';
-    });
-
-    resultsDiv.innerHTML = html;
-    toast('检索完成，找到 ' + articles.length + ' 篇文献', 'success');
-  } catch(e) {
-    resultsDiv.innerHTML = '<div class="empty-state"><p>检索失败: ' + escHtml(e.message) + '</p><p style="font-size:0.8rem;">请检查网络连接后重试</p></div>';
-    toast('文献检索失败', 'error');
   }
 }
-// ============================================
+
+// DuckDuckGo 搜索（HTML解析，无需API key）
+async function searchDuckDuckGo(query) {
+  const fullQuery = query + ' 临床指南 ICU site:guide.medlive.cn OR site:rs.yiigle.com';
+  const url = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(fullQuery);
+  
+  try {
+    const resp = await fetch(url, { headers: { 'Accept': 'text/html' } });
+    const html = await resp.text();
+    const results = [];
+    
+    // 解析 DuckDuckGo Lite 结果
+    const linkRegex = /<a[^>]*href="(https?:\/\/[^"]*guide\.medlive\.cn[^"]*|https?:\/\/[^"]*rs\.yiigle\.com[^"]*|https?:\/\/[^"]*yiigle\.com[^"]*)"[^>]*class="result-link"[^>]*>([^<]*)<\/a>/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      const url = match[1].replace(/&amp;/g, '&');
+      const title = match[2].replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+      if (title && title.length > 5) {
+        results.push({
+          t: title,
+          s: '网络来源',
+          y: '',
+          u: url,
+          k: query,
+          isWeb: true,
+        });
+      }
+    }
+    
+    // 备用解析：更宽松的匹配
+    if (results.length === 0) {
+      const altRegex = /<a[^>]*href="(https?:\/\/[^"]*guide\.medlive\.cn[^"]*|https?:\/\/[^"]*rs\.yiigle\.com[^"]*|https?:\/\/[^"]*yiigle\.com[^"]*)"[^>]*>([^<]+)<\/a>/gi;
+      while ((match = altRegex.exec(html)) !== null) {
+        const url = match[1].replace(/&amp;/g, '&');
+        const title = match[2].replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+        if (title && title.length > 3 && !title.includes('http')) {
+          results.push({
+            t: title,
+            s: '网络来源',
+            y: '',
+            u: url,
+            k: query,
+            isWeb: true,
+          });
+        }
+      }
+    }
+    
+    return results.slice(0, 10);
+  } catch(e) {
+    return [];
+  }
+}
+
+function renderGuidelineResults(results) {
+  const container = document.getElementById('litResults');
+  if (!container || results.length === 0) {
+    if (container) container.innerHTML = '<div class="empty-state"><p>未找到相关指南</p></div>';
+    return;
+  }
+
+  let html = '';
+  results.forEach((g, idx) => {
+    const linkUrl = g.u || ('https://guide.medlive.cn/search?q=' + encodeURIComponent(g.t));
+    html += '<div class="guideline-card' + (g.isWeb ? ' guideline-web' : '') + '">' +
+      '<div class="guideline-card-header">' +
+        '<span class="guideline-number">' + (idx + 1) + '</span>' +
+        '<div class="guideline-title-wrap">' +
+          '<a class="guideline-title" href="' + linkUrl + '" target="_blank" rel="noopener">' + escHtml(g.t) + '</a>' +
+          (g.isWeb ? '<span class="guideline-web-badge">联网</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="guideline-meta">' + escHtml(g.s) + (g.y ? ' · ' + g.y : '') + '</div>' +
+    '</div>';
+  });
+
+  container.innerHTML = html;
+}// ============================================
 //  6. 表单弹窗 (Form Modals)
 // ============================================
 

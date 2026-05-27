@@ -449,21 +449,66 @@ body {
 }
 .termination-option-label { font-weight: 600; font-size: 0.9rem; }
 
-/* --- Literature --- */
-.literature-search {
-  display: flex; gap: 10px; margin-bottom: 20px;
+/* --- Clinical Guidelines --- */
+.guideline-search-bar {
+  display: flex; gap: 8px; align-items: center;
 }
-.literature-search .form-input { max-width: 500px; }
-.lit-result {
-  padding: 16px; border: 1px solid var(--border);
-  border-radius: var(--radius); margin-bottom: 10px;
-  background: var(--surface);
+.guide-tag {
+  font-size: 0.75rem; padding: 3px 10px;
 }
-.lit-result-title { font-weight: 600; color: var(--primary-dark); margin-bottom: 4px; }
-.lit-result-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
-.lit-result-abstract { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
-.lit-result a { color: var(--primary); text-decoration: none; }
-.lit-result a:hover { text-decoration: underline; }
+.guide-tag.btn-primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.guideline-card {
+  padding: 14px 16px; border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 8px;
+  background: var(--surface); transition: box-shadow 0.15s;
+}
+.guideline-card:hover { box-shadow: var(--shadow-sm); }
+.guideline-card-header {
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.guideline-number {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--primary-light); color: var(--primary-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 600; flex-shrink: 0;
+}
+.guideline-title-wrap { flex:1; }
+.guideline-title {
+  font-weight: 600; color: var(--primary-dark); text-decoration: none;
+  font-size: 0.9rem; line-height: 1.4;
+}
+.guideline-title:hover { text-decoration: underline; }
+.guideline-meta {
+  font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;
+  padding-left: 34px;
+}
+.guideline-web-badge {
+  font-size: 0.65rem; background: var(--warning-light);
+  color: var(--warning); padding: 1px 6px; border-radius: 99px;
+  margin-left: 6px; font-weight: 500;
+}
+.guideline-web { border-left: 3px solid var(--warning); }
+
+/* --- Outcome Month Grouping --- */
+.outcome-search-bar {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.outcome-month-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; margin-top: 6px; margin-bottom: 8px;
+  border-bottom: 2px solid var(--primary-light);
+}
+.outcome-month-title {
+  font-size: 0.95rem; font-weight: 600; color: var(--text);
+}
+.outcome-month-count {
+  font-size: 0.75rem; color: var(--text-muted);
+  background: var(--surface-alt); padding: 2px 10px;
+  border-radius: 99px;
+}
 
 /* --- Micro --- */
 .micro-card {
