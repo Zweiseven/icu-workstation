@@ -1149,6 +1149,7 @@ function showSyncPanel() {
   if (!hasCloudSync) {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>同步方法</strong><br>' +
+      '<strong>前提：必须先将 ICU 工作站安装到手机主屏幕</strong>（Chrome → 添加到主屏幕），否则分享列表不会出现 ICU 工作站。<br><br>' +
       '<strong>电脑 → 手机：</strong> 电脑导出 → 保存到云盘 → 手机云盘App → 找到文件 → 分享 → 选「ICU工作站」<br>' +
       '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 选云盘App保存 → 电脑点「从文件导入」' +
     '</div>';
@@ -1156,8 +1157,9 @@ function showSyncPanel() {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>手机端同步</strong><br>' +
       '电脑已通过云盘自动同步。手机同步：<br>' +
-      '① 打开云盘 App → 找到 icu_data.json<br>' +
-      '② 分享该文件 → 选择「ICU 工作站」即可导入' +
+      '① 确保已将 ICU 工作站安装到主屏幕<br>' +
+      '② 打开云盘 App → 找到 icu_data.json<br>' +
+      '③ 分享该文件 → 选择「ICU 工作站」即可导入' +
     '</div>';
   }
 

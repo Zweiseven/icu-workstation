@@ -32,7 +32,7 @@
       "files": [
         {
           "name": "data",
-          "accept": ["application/json"]
+          "accept": ["application/json", "text/plain", "application/octet-stream", ".json"]
         }
       ]
     }

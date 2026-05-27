@@ -57,11 +57,12 @@ self.addEventListener("fetch", (event) => {
           if (file && file.name && file.name.endsWith(".json")) {
             const text = await file.text();
             JSON.parse(text);
-            const clients = await self.clients.matchAll({ type: "window" });
-            clients.forEach((c) => c.postMessage({ type: "shared-file", content: text }));
+            // 存入 Cache API，冷启动也能读取（比 postMessage 可靠）
+            const cache = await caches.open("icu-shared");
+            await cache.put("/__shared__", new Response(text));
           }
         } catch (e) {}
-        return Response.redirect("./index.html", 303);
+        return Response.redirect("./index.html?shared=1", 303);
       })()
     );
     return;

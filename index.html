@@ -81,6 +81,21 @@ const APP_VERSION = '202605272300';
 
 (async function bootstrap() {
   if (!('serviceWorker' in navigator)) return;
+  // === 提取云盘分享数据（Cache → localStorage，防版本重载丢失）===
+  try {
+    const sharedCache = await caches.open('icu-shared');
+    const resp = await sharedCache.match('/__shared__');
+    if (resp) {
+      const text = await resp.text();
+      await sharedCache.delete('/__shared__');
+      localStorage.setItem('_icu_shared_import', text);
+    }
+  } catch(e) {}
+  // 清理 URL 中的 shared 标记
+  if (location.search.includes('shared=1')) {
+    history.replaceState(null, '', './index.html');
+  }
+
 
   // === 第一道防线：版本不匹配 → 核清理 ===
   const storedVer = localStorage.getItem('_app_version');
@@ -100,6 +115,22 @@ const APP_VERSION = '202605272300';
   const reg = await navigator.serviceWorker.register('./sw.js');
   console.log('SW registered: ' + APP_VERSION);
   window._swReg = reg;
+
+  // === 导入云盘分享的数据 ===
+  const sharedData = localStorage.getItem('_icu_shared_import');
+  if (sharedData) {
+    localStorage.removeItem('_icu_shared_import');
+    try {
+      const imported = JSON.parse(sharedData);
+      if (imported.patients && Array.isArray(imported.patients)) {
+        const backupKey = 'icu_workstation_v2_backup_' + new Date().toISOString().split('T')[0];
+        localStorage.setItem(backupKey, JSON.stringify(state));
+        localStorage.setItem('icu_workstation_v2', sharedData);
+        location.reload();
+        return;
+      }
+    } catch(e) { console.warn('Shared import failed:', e); }
+  }
 
   // === 检测是否有等待中的更新 ===
   if (reg.waiting && navigator.serviceWorker.controller) {
