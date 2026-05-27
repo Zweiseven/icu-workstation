@@ -449,48 +449,6 @@ body {
 }
 .termination-option-label { font-weight: 600; font-size: 0.9rem; }
 
-/* --- Clinical Guidelines --- */
-.guideline-search-bar {
-  display: flex; gap: 8px; align-items: center;
-}
-.guide-tag {
-  font-size: 0.75rem; padding: 3px 10px;
-}
-.guide-tag.btn-primary {
-  background: var(--primary); color: #fff; border-color: var(--primary);
-}
-.guideline-card {
-  padding: 14px 16px; border: 1px solid var(--border);
-  border-radius: var(--radius); margin-bottom: 8px;
-  background: var(--surface); transition: box-shadow 0.15s;
-}
-.guideline-card:hover { box-shadow: var(--shadow-sm); }
-.guideline-card-header {
-  display: flex; gap: 10px; align-items: flex-start;
-}
-.guideline-number {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--primary-light); color: var(--primary-dark);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.72rem; font-weight: 600; flex-shrink: 0;
-}
-.guideline-title-wrap { flex:1; }
-.guideline-title {
-  font-weight: 600; color: var(--primary-dark); text-decoration: none;
-  font-size: 0.9rem; line-height: 1.4;
-}
-.guideline-title:hover { text-decoration: underline; }
-.guideline-meta {
-  font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;
-  padding-left: 34px;
-}
-.guideline-web-badge {
-  font-size: 0.65rem; background: var(--warning-light);
-  color: var(--warning); padding: 1px 6px; border-radius: 99px;
-  margin-left: 6px; font-weight: 500;
-}
-.guideline-web { border-left: 3px solid var(--warning); }
-
 /* --- Outcome Month Grouping --- */
 .outcome-search-bar {
   display: flex; gap: 8px; align-items: center;
