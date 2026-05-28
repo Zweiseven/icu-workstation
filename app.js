@@ -440,7 +440,7 @@ function renderPatientInfo(container, p) {
   html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
     '<span style="font-size:0.82rem;color:var(--text-muted)">ICU已住：<strong style="color:' + (icuH > 48 ? 'var(--danger)' : 'var(--text)') + '">' + Math.floor(icuH / 24) + '天' + (icuH % 24) + '小时</strong></span>' +
     '<span style="font-size:0.82rem;color:var(--text-muted)">肠内营养：<strong style="color:' + (en && en.started ? 'var(--success)' : 'var(--warning)') + '">' + (en && en.started ? '已启动 (' + (en.startDate || '') + ')' : '未启动') + '</strong></span>' +
-    '<button class="btn btn-sm" onclick="markEnteralNutrition(\x27' + p.id + '\x27')" style="font-size:0.72rem;">标记肠内营养</button>' +
+    '<button class="btn btn-sm" onclick="markEnteralNutrition(\'' + p.id + '\')" style="font-size:0.72rem;">标记肠内营养</button>' +
   '</div>';
   html += '</div>';
 
@@ -989,7 +989,7 @@ function renderSingleNote(n, idx, pid) {
     '<div class="treatment-note-header">' +
       renderNoteBadge(n.category, catMap[n.category] || n.category) +
       '<span class="treatment-note-time">' + escHtml(fmtDateTime(n.timestamp)) + '</span>' +
-      '<button class="treatment-note-edit" onclick="editNote(\x27' + pid + '\x27, ' + idx + ')">编辑</button>' +
+      '<button class="treatment-note-edit" onclick="editNote(\'' + pid + '\', ' + idx + ')">编辑</button>' +
     '</div>' +
     '<p class="treatment-note-body">' + escHtml(n.note) + '</p>' +
   '</div>';
@@ -1101,7 +1101,7 @@ function render48hAlerts(alerts) {
   let html = '<div class="alert-48h-section"><div class="alert-48h-header"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>ICU入住超48h评估提醒</div><div class="alert-48h-list">';
   alerts.forEach(a => {
     const p = a.patient;
-    html += '<div class="alert-48h-card" onclick="openPatient(\x27' + p.id + '\x27')">' +
+    html += '<div class="alert-48h-card" onclick="openPatient(\'' + p.id + '\')">' +
       '<div class="alert-48h-card-top"><span class="alert-48h-name">' + escHtml(p.name) + '</span><span class="alert-48h-bed">' + escHtml(p.bed) + '</span><span class="alert-48h-badge badge-warn">' + Math.floor(a.hours / 24) + '天</span></div>' +
       '<div class="alert-48h-checks">' +
         '<div class="alert-48h-check' + (a.enStarted ? ' check-ok' : ' check-fail') + '">' +
