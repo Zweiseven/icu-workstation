@@ -659,6 +659,8 @@ body {
   transition: all 0.15s;
 }
 .patient-card-action:hover { border-color: var(--danger); color: var(--danger); }
+.patient-card-delete { color: var(--text-muted); }
+.patient-card-delete:hover { color: var(--danger); background: rgba(220,38,38,0.1); }
 
 /* --- Update Banner --- */
 .update-banner {

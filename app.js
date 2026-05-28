@@ -53,6 +53,10 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.19", date:"2026-05-29", changes:[
+    "患者卡片新增删除功能（病区总览 + 转归管理）",
+    "删除前弹出确认对话框防止误操作",
+  ]},
   { v:"v2.18", date:"2026-05-28", changes:[
     "APACHE II 双评分：入住ICU 24h内 + 结束治疗时",
     "结束治疗统计：16项关键指标是/否记录",
@@ -356,6 +360,7 @@ function buildPatientCard(p) {
       '<div style="display:flex;gap:8px;align-items:center;">' +
         '<span class="patient-card-bed">' + escHtml(p.bed || '—') + '</span>' +
         '<button class="patient-card-action" onclick="event.stopPropagation();showTerminatePatient(\'' + p.id + '\')" title="终止治疗">结束治疗</button>' +
+        '<button class="patient-card-action patient-card-delete" onclick="event.stopPropagation();deletePatient(\'' + p.id + '\')" title="删除患者"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
       '</div>' +
     '</div>' +
     '<div class="patient-card-body" onclick="openPatient(\'' + p.id + '\')">';
@@ -481,6 +486,23 @@ function showTerminatePatient(pid) {
   });
 }
 
+
+function deletePatient(pid) {
+  const p = getPatient(pid);
+  if (!p) return;
+  showModal('确认删除', '<p>确定删除患者 <strong>' + escHtml(p.name) + '</strong> (' + escHtml(p.bed || '') + ') 的所有记录吗？此操作不可撤销。</p>', function() {
+    state.patients = state.patients.filter(function(pp) { return pp.id !== pid; });
+    if (state.currentPatientId === pid) state.currentPatientId = null;
+    saveState();
+    closeModal();
+    render();
+    toast('已删除 ' + p.name, 'success');
+  });
+  setTimeout(function() {
+    var btn = document.getElementById('modalSaveBtn');
+    if (btn) { btn.textContent = '确认删除'; btn.style.background = 'var(--danger)'; }
+  }, 50);
+}
 
 function selectTerminationOption(el) {
   $$('#terminationOptions .termination-option').forEach(o => o.classList.remove('selected'));
@@ -987,7 +1009,7 @@ function doOutcomeRender() {
     if (p.treatmentNotes && p.treatmentNotes.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);">诊疗: ' + p.treatmentNotes.length + ' 条</div>';
     }
-    html += '<button class="btn btn-sm" onclick="showPatientEdit(\'' + p.id + '\')" style="margin-top:8px;font-size:0.72rem;">编辑信息</button>';
+    html += '<button class="btn btn-sm" onclick="showPatientEdit(\'' + p.id + '\')" style="font-size:0.72rem;">编辑信息</button><button class="btn btn-sm" onclick="deletePatient(\'' + p.id + '\')" style="font-size:0.72rem;color:var(--danger);margin-left:6px;">删除</button>';
     html += '</div>';
   });
 
