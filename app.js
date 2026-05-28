@@ -32,8 +32,34 @@ const OUTCOME_TYPES = [
 ];
 
 
+const OUTCOME_STATS = [
+  { key:'aki', label:'AKI' },
+  { key:'brainInjury', label:'脑损伤' },
+  { key:'septicShock', label:'感染性休克' },
+  { key:'antibioticUse', label:'抗生素使用' },
+  { key:'readmit48h', label:'48h内重返ICU' },
+  { key:'pronePosition', label:'俯卧位' },
+  { key:'modSevereARDS', label:'中重度ARDS' },
+  { key:'bundle', label:'Bundle' },
+  { key:'vteProphylaxis', label:'VTE预防' },
+  { key:'ards', label:'ARDS' },
+  { key:'delirium', label:'谵妄' },
+  { key:'intubation', label:'气管插管' },
+  { key:'extubation', label:'拔除气管插管' },
+  { key:'accidentalExtub', label:'插管脱出' },
+  { key:'reintub48h', label:'48h再插管' },
+  { key:'unplannedPostOp', label:'非计划术后' },
+];
+
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.18", date:"2026-05-28", changes:[
+    "APACHE II 双评分：入住ICU 24h内 + 结束治疗时",
+    "结束治疗统计：16项关键指标是/否记录",
+    "编辑信息保存 APACHE II、肠内营养状态",
+    "转归卡片显示治疗统计数据（是项）",
+    "基本信息卡片增加 APACHE II 分数展示",
+  ]},
   { v:"v2.17", date:"2026-05-29", changes:[
     "PWA缓存破坏机制：JS/CSS带版本号参数强制刷新",
     "编辑信息弹窗新增肠内营养是/否+原因编辑",
@@ -416,21 +442,37 @@ function showTerminatePatient(pid) {
     '</div>';
   });
 
+  // Build stats checkboxes
+  let statsHTML = '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;"><label class="form-label" style="font-weight:600;">治疗统计数据（是/否）</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;">';
+  OUTCOME_STATS.forEach(s => {
+    statsHTML += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0;"><input type="checkbox" id="fStat_' + s.key + '" onchange="var r=document.getElementById(\'fStatReason_\'+this.id.split(\'_\')[1]);if(r)r.style.display=this.checked?\'none\':\'block\'"> ' + s.label + '</label>';
+  });
+  statsHTML += '</div></div>';
+
   const body = '<p style="margin-bottom:12px;color:var(--text-secondary);">为 <strong>' + escHtml(p.name) + '</strong> (' + escHtml(p.bed) + ') 选择治疗转归：</p>' +
     '<div id="terminationOptions">' + optionsHTML + '</div>' +
     '<div class="form-group" style="margin-top:12px;"><label class="form-label">备注（可选）</label><textarea class="form-textarea" id="fTermNote" placeholder="简要描述转归情况、转科去向等..."></textarea></div>' +
+    statsHTML +
     '<input type="hidden" id="fTermOutcome" value="">';
 
   showModal('结束治疗 — ' + escHtml(p.name), body, function() {
     const outcomeVal = document.getElementById('fTermOutcome').value;
     if (!outcomeVal) { toast('请选择转归类型', 'error'); return; }
     const ot = OUTCOME_TYPES.find(o => o.value === outcomeVal);
+    // Collect stats
+    const stats = {};
+    OUTCOME_STATS.forEach(s => {
+      const cb = document.getElementById('fStat_' + s.key);
+      if (cb && cb.checked) stats[s.key] = true;
+    });
     p.outcome = {
       type: outcomeVal,
       label: ot ? ot.label : outcomeVal,
       date: todayStr(),
       notes: document.getElementById('fTermNote').value,
       icuOver48h: icuHours(p.admissionDate) > 48,
+      enWithin48h: p.enteralNutrition && p.enteralNutrition.started,
+      stats: stats,
     };
     saveState();
     closeModal();
@@ -438,6 +480,7 @@ function showTerminatePatient(pid) {
     toast(p.name + ' 已标记为「' + p.outcome.label + '」，可在转归管理中查看', 'success');
   });
 }
+
 
 function selectTerminationOption(el) {
   $$('#terminationOptions .termination-option').forEach(o => o.classList.remove('selected'));
@@ -456,6 +499,12 @@ function renderPatientInfo(container, p) {
       '<div><span style="color:var(--text-muted)">状态：</span><span class="status-tag ' + (p.outcome ? 'status-terminated' : 'status-active') + '">' + (p.outcome ? '已转归' : '在科') + '</span></div>' +
     '</div>';
   if (p.secondaryDiagnoses) html += '<div style="margin-top:8px;font-size:0.85rem;"><span style="color:var(--text-muted)">次要诊断：</span>' + escHtml(p.secondaryDiagnoses) + '</div>';
+  if (p.apache24h || p.apacheDischarge) {
+    html += '<div style="margin-top:6px;display:flex;gap:16px;flex-wrap:wrap;font-size:0.82rem;">' +
+      (p.apache24h ? '<span style="color:var(--text-muted)">APACHE II (24h内)：</span><strong>' + escHtml(p.apache24h) + '</strong>' : '') +
+      (p.apacheDischarge ? '<span style="color:var(--text-muted);margin-left:8px;">APACHE II (结束治疗时)：</span><strong>' + escHtml(p.apacheDischarge) + '</strong>' : '') +
+    '</div>';
+  }
   const en = p.enteralNutrition;
   const icuH = icuHours(p.admissionDate);
   html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
@@ -921,6 +970,17 @@ function doOutcomeRender() {
       const enStat = p.enteralNutrition;
     html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">肠内营养: ' + (enStat && enStat.started ? '是' : '否' + (enStat && enStat.reason ? '（' + escHtml(enStat.reason) + '）' : '')) + '</div>';
     html += '<div style="font-size:0.75rem;color:var(--text-muted);">ICU已住: ' + Math.floor(icuHours(p.admissionDate) / 24) + '天</div>';
+    if (p.outcome && p.outcome.stats) {
+      const trueStats = Object.entries(p.outcome.stats).filter(function(e) { return e[1] === true; });
+      if (trueStats.length > 0) {
+        html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px;">';
+        trueStats.forEach(function(e) {
+          var s = OUTCOME_STATS.find(function(os) { return os.key === e[0]; });
+          if (s) html += '<span style="background:var(--surface-alt);padding:1px 8px;border-radius:3px;">' + escHtml(s.label) + '</span>';
+        });
+        html += '</div>';
+      }
+    }
     if (p.antibiotics && p.antibiotics.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(p.antibiotics.map(a => a.drug).join(', ')) + '</div>';
     }
@@ -940,6 +1000,7 @@ function showPatientEdit(id) {
   const p = getPatient(id);
   if (!p) return;
   const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fPName" value="' + escHtml(p.name || '') + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fPBed" value="' + escHtml(p.bed || '') + '"></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fPAge" type="number" value="' + escHtml(p.age || '') + '"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fPGender"><option value="男"' + (p.gender === '男' ? ' selected' : '') + '>男</option><option value="女"' + (p.gender === '女' ? ' selected' : '') + '>女</option></select></div><div class="form-group"><label class="form-label">入住ICU日期</label><input class="form-input" id="fPAdmit" type="datetime-local" value="' + escHtml(p.admissionDate || '') + '"></div></div><div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fPDiag" value="' + escHtml(p.primaryDiagnosis || '') + '"></div><div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fPDiag2" value="' + escHtml(p.secondaryDiagnoses || '') + '"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">APACHE II (入住24h内)</label><input class="form-input" id="fPApache24" type="number" value="' + escHtml(p.apache24h || '') + '"></div><div class="form-group"><label class="form-label">APACHE II (结束治疗时)</label><input class="form-input" id="fPApacheDc" type="number" value="' + escHtml(p.apacheDischarge || '') + '"></div></div>' +
     '<div class="form-group"><label class="form-label">肠内营养</label><select class="form-select" id="fPENStarted" onchange="document.getElementById(\'fPENReasonRow\').style.display=this.value===\'false\'?\'block\':\'none\'"><option value="true"' + ((p.enteralNutrition && p.enteralNutrition.started) ? ' selected' : '') + '>是，已启动</option><option value="false"' + (!p.enteralNutrition || !p.enteralNutrition.started ? ' selected' : '') + '>否，未启动</option></select></div>' +
     '<div class="form-group" id="fPENReasonRow" style="display:' + ((p.enteralNutrition && p.enteralNutrition.started) ? 'none' : 'block') + ';"><label class="form-label">未启动原因</label><textarea class="form-textarea" id="fPENReason">' + escHtml((p.enteralNutrition && p.enteralNutrition.reason) || '') + '</textarea></div>';
 
@@ -951,6 +1012,11 @@ function showPatientEdit(id) {
     p.admissionDate = document.getElementById('fPAdmit').value;
     p.primaryDiagnosis = document.getElementById('fPDiag').value;
     p.secondaryDiagnoses = document.getElementById('fPDiag2').value;
+    p.apache24h = document.getElementById('fPApache24').value;
+    p.apacheDischarge = document.getElementById('fPApacheDc').value;
+    if (!p.enteralNutrition) p.enteralNutrition = { started: false, reason: '' };
+    p.enteralNutrition.started = document.getElementById('fPENStarted').value === 'true';
+    p.enteralNutrition.reason = p.enteralNutrition.started ? '' : (document.getElementById('fPENReason').value || '');
     saveState();
     closeModal();
     render();
