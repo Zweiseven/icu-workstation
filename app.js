@@ -1107,16 +1107,19 @@ async function writeToSyncFile(handle) {
     handle = h;
   }
   try {
+    const exportObj = { version: '2.9', updatedAt: new Date().toISOString(), patients: state.patients };
+    const content = JSON.stringify(exportObj, null, 2);
     const writable = await handle.createWritable();
-    const exportObj = { version: '2.1', updatedAt: new Date().toISOString(), patients: state.patients };
-    await writable.write(JSON.stringify(exportObj, null, 2));
+    await writable.truncate(0);
+    await writable.write(content);
     await writable.close();
+    await handle.getFile();
+    console.log('云同步已写入: ' + exportObj.patients.length + ' 位患者');
   } catch(e) {
     console.warn('云同步写入失败:', e.message);
   }
 }
 
-// 从同步文件读取数据
 async function readFromSyncFile(handle) {
   try {
     const file = await handle.getFile();
@@ -1274,7 +1277,7 @@ function showSyncPanel() {
   } else {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>手机端同步</strong><br>' +
-      '电脑已通过云盘自动同步。手机同步：<br>' +
+      '电脑数据每次修改后自动写入同步文件夹的 icu_data.json。请确认云盘客户端正在运行且同步状态正常。如未自动同步，尝试暂停再恢复云盘同步。手机同步：<br>' +
       '① 确保已将 ICU 工作站安装到主屏幕<br>' +
       '② 打开云盘 App → 找到 icu_data.json<br>' +
       '③ 分享该文件 → 选择「ICU 工作站」即可导入' +
@@ -1293,6 +1296,7 @@ function showSyncPanel() {
       const h = await getFileHandle();
       if (h) {
         statusEl.textContent = '✓ 云同步已启用 — 每次修改自动保存';
+        // 额外提示：确认云盘客户端正在运行且已开启实时同步
         statusEl.style.color = 'var(--success)';
         btnEl.textContent = '重新选择云盘文件';
       }
