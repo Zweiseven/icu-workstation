@@ -730,10 +730,11 @@ body {
 }
 .treatment-note-edit {
   background: none; border: none; color: var(--text-muted);
-  cursor: pointer; padding: 3px; border-radius: 3px;
-  opacity: 0; transition: opacity 0.15s;
+  cursor: pointer; padding: 6px; border-radius: 3px;
+  opacity: 0.6; transition: opacity 0.15s;
+  min-width: 28px; min-height: 28px;
 }
-.treatment-note:hover .treatment-note-edit { opacity: 1; }
+.treatment-note:hover .treatment-note-edit, .treatment-note-edit:active { opacity: 1; }
 .treatment-note-edit:hover { color: var(--primary); background: var(--primary-light); }
 .treatment-note-body {
   font-size: 0.85rem; white-space: pre-wrap; margin: 0;
