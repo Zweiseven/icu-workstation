@@ -16,6 +16,7 @@ const fmtDateTime = (d) => {
   return fmtDate(d) + ' ' + String(new Date(d).getHours()).padStart(2,'0') + ':' + String(new Date(d).getMinutes()).padStart(2,'0');
 };
 const todayStr = () => new Date().toISOString().split('T')[0];
+const nowDateTime = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -33,6 +34,11 @@ const OUTCOME_TYPES = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.14", date:"2026-05-29", changes:[
+    "诊疗记录新增删除功能",
+    "入院日期改为入住ICU日期 + 精确到小时分钟(datetime-local)",
+    "icuHours兼容新旧日期格式，实现精确48h计算",
+  ]},
   { v:"v2.13", date:"2026-05-29", changes:[
     "新增ICU入住超48h评估提醒",
     "肠内营养追踪：标记启动/48h未启动提醒",
@@ -320,7 +326,7 @@ function buildPatientCard(p) {
     card += '<div class="patient-info-row"><span>主诊断</span><em style="color:var(--text-muted)">未录入</em></div>';
   }
   if (p.age) card += '<div class="patient-info-row"><span>年龄/性别</span><strong>' + escHtml(p.age) + '岁 / ' + escHtml(p.gender || '—') + '</strong></div>';
-  card += '<div class="patient-info-row"><span>入院日期</span><strong>' + escHtml(p.admissionDate || '—') + '</strong></div>';
+  card += '<div class="patient-info-row"><span>ICU日期</span><strong>' + escHtml(fmtDate(p.admissionDate) || '—') + '</strong></div>';
 
   if (latestVitals) {
     card += '<div style="margin-top:8px;font-size:0.8rem;color:var(--text-secondary);display:flex;gap:12px;flex-wrap:wrap;">';
@@ -354,7 +360,7 @@ function openPatient(id) {
 // --- Add Patient ---
 function showAddPatient() {
   const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fNewName" value="患者' + nextPatientNum + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fNewBed" placeholder="如: ICU-05"></div></div>' +
-    '<div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fNewAge" type="number"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fNewGender"><option value="男">男</option><option value="女">女</option></select></div><div class="form-group"><label class="form-label">入院日期</label><input class="form-input" id="fNewAdmit" type="date" value="' + todayStr() + '"></div></div>' +
+    '<div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fNewAge" type="number"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fNewGender"><option value="男">男</option><option value="女">女</option></select></div><div class="form-group"><label class="form-label">入住ICU日期</label><input class="form-input" id="fNewAdmit" type="datetime-local" value="' + nowDateTime() + '"></div></div>' +
     '<div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fNewDiag" placeholder="入院主要诊断"></div>' +
     '<div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fNewDiag2" placeholder="次要诊断"></div>';
 
@@ -430,7 +436,7 @@ function renderPatientInfo(container, p) {
       '<div><span style="color:var(--text-muted)">姓名：</span><strong>' + escHtml(p.name) + '</strong></div>' +
       '<div><span style="color:var(--text-muted)">床号：</span><strong>' + escHtml(p.bed) + '</strong></div>' +
       '<div><span style="color:var(--text-muted)">年龄/性别：</span><strong>' + escHtml(p.age) + '岁 / ' + escHtml(p.gender) + '</strong></div>' +
-      '<div><span style="color:var(--text-muted)">入院日期：</span><strong>' + escHtml(p.admissionDate) + '</strong></div>' +
+      '<div><span style="color:var(--text-muted)">入住ICU日期：</span><strong>' + escHtml(fmtDate(p.admissionDate)) + '</strong></div>' +
       '<div><span style="color:var(--text-muted)">主诊断：</span><strong>' + escHtml(p.primaryDiagnosis || '—') + '</strong></div>' +
       '<div><span style="color:var(--text-muted)">状态：</span><span class="status-tag ' + (p.outcome ? 'status-terminated' : 'status-active') + '">' + (p.outcome ? '已转归' : '在科') + '</span></div>' +
     '</div>';
@@ -660,7 +666,7 @@ function generateHandover() {
   sb += '年龄/性别: ' + (p.age || '—') + '岁 / ' + (p.gender || '—') + '\n';
   sb += '主诊断: ' + (p.primaryDiagnosis || '—') + '\n';
   if (p.secondaryDiagnoses) sb += '其他诊断: ' + p.secondaryDiagnoses + '\n';
-  sb += '入院日期: ' + (p.admissionDate || '—') + '\n\n';
+  sb += '入住ICU: ' + (fmtDate(p.admissionDate) || '—') + '\n\n';
 
   sb += '【B — 背景 Background】\n';
   if (latestVitals) {
@@ -884,7 +890,7 @@ function doOutcomeRender() {
       '<div class="outcome-card-header">' +
         '<div>' +
           '<div class="outcome-card-patient">' + escHtml(p.name || '未命名') + ' <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted);">' + escHtml(p.bed || '') + '</span></div>' +
-          '<div class="outcome-card-meta">' + escHtml(p.primaryDiagnosis || '无诊断') + ' · ' + escHtml(p.age || '—') + '岁 · ' + escHtml(p.gender || '') + ' · 入院: ' + escHtml(p.admissionDate || '—') + '</div>' +
+          '<div class="outcome-card-meta">' + escHtml(p.primaryDiagnosis || '无诊断') + ' · ' + escHtml(p.age || '—') + '岁 · ' + escHtml(p.gender || '') + ' · ICU: ' + escHtml(fmtDate(p.admissionDate) || '—') + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' + (p.outcome
           ? '<span class="outcome-tag ' + (ot ? ot.cssClass : '') + '">' + escHtml(p.outcome.label) + '</span><div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">' + escHtml(p.outcome.date || '') + '</div>'
@@ -911,7 +917,7 @@ function doOutcomeRender() {
 function showPatientEdit(id) {
   const p = getPatient(id);
   if (!p) return;
-  const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fPName" value="' + escHtml(p.name || '') + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fPBed" value="' + escHtml(p.bed || '') + '"></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fPAge" type="number" value="' + escHtml(p.age || '') + '"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fPGender"><option value="男"' + (p.gender === '男' ? ' selected' : '') + '>男</option><option value="女"' + (p.gender === '女' ? ' selected' : '') + '>女</option></select></div><div class="form-group"><label class="form-label">入院日期</label><input class="form-input" id="fPAdmit" type="date" value="' + escHtml(p.admissionDate || '') + '"></div></div><div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fPDiag" value="' + escHtml(p.primaryDiagnosis || '') + '"></div><div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fPDiag2" value="' + escHtml(p.secondaryDiagnoses || '') + '"></div>';
+  const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fPName" value="' + escHtml(p.name || '') + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fPBed" value="' + escHtml(p.bed || '') + '"></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fPAge" type="number" value="' + escHtml(p.age || '') + '"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fPGender"><option value="男"' + (p.gender === '男' ? ' selected' : '') + '>男</option><option value="女"' + (p.gender === '女' ? ' selected' : '') + '>女</option></select></div><div class="form-group"><label class="form-label">入住ICU日期</label><input class="form-input" id="fPAdmit" type="datetime-local" value="' + escHtml(p.admissionDate || '') + '"></div></div><div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fPDiag" value="' + escHtml(p.primaryDiagnosis || '') + '"></div><div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fPDiag2" value="' + escHtml(p.secondaryDiagnoses || '') + '"></div>';
 
   showModal('编辑患者信息', body, function() {
     p.name = document.getElementById('fPName').value;
@@ -990,6 +996,7 @@ function renderSingleNote(n, idx, pid) {
       renderNoteBadge(n.category, catMap[n.category] || n.category) +
       '<span class="treatment-note-time">' + escHtml(fmtDateTime(n.timestamp)) + '</span>' +
       '<button class="treatment-note-edit" onclick="editNote(\'' + pid + '\', ' + idx + ')">编辑</button>' +
+      '<button class="treatment-note-delete" onclick="deleteNote(\x27' + pid + '\x27, ' + idx + ')">删除</button>' +
     '</div>' +
     '<p class="treatment-note-body">' + escHtml(n.note) + '</p>' +
   '</div>';
@@ -1021,6 +1028,14 @@ function editNote(pid, idx) {
     note.category = document.getElementById('fEditNoteCat').value;
     note.note = document.getElementById('fEditNoteText').value;
     saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗已更新', 'success');
+  });
+}
+function deleteNote(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.treatmentNotes || !p.treatmentNotes[idx]) return;
+  showModal('确认删除', '<p>确定删除这条诊疗记录吗？此操作不可撤销。</p>', function() {
+    p.treatmentNotes.splice(idx, 1);
+    saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗已删除', 'success');
   });
 }
 
@@ -1080,7 +1095,8 @@ function showAddAntibiotic(pid) {
 // ICU入住超48h检测
 function icuHours(admissionDate) {
   if (!admissionDate) return 0;
-  return Math.floor((new Date() - new Date(admissionDate + 'T00:00:00')) / 3600000);
+  const d = admissionDate.includes('T') ? new Date(admissionDate) : new Date(admissionDate + 'T00:00:00');
+  return Math.floor((new Date() - d) / 3600000);
 }
 
 function get48hAlerts() {
@@ -1093,7 +1109,7 @@ function get48hAlerts() {
       enStarted: p.enteralNutrition && p.enteralNutrition.started,
       enDate: p.enteralNutrition ? p.enteralNutrition.startDate : '',
       enWithin48h: p.enteralNutrition && p.enteralNutrition.started && p.enteralNutrition.startDate &&
-        (new Date(p.enteralNutrition.startDate + 'T00:00:00') - new Date(p.admissionDate + 'T00:00:00')) / 3600000 <= 48,
+        ((p.enteralNutrition.startDate.includes('T') ? new Date(p.enteralNutrition.startDate) : new Date(p.enteralNutrition.startDate + 'T00:00:00')) - (p.admissionDate.includes('T') ? new Date(p.admissionDate) : new Date(p.admissionDate + 'T00:00:00'))) / 3600000 <= 48,
     }));
 }
 
