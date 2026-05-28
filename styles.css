@@ -748,3 +748,44 @@ body {
   font-family: var(--font); cursor: pointer;
 }
 .daily-toggle:hover { color: var(--primary); }
+
+/* --- 48h ICU评估提醒 --- */
+.alert-48h-section {
+  background: var(--surface);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 18px;
+}
+.alert-48h-header {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: 0.9rem; color: var(--warning);
+  margin-bottom: 12px;
+}
+.alert-48h-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-48h-card {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.alert-48h-card:hover { box-shadow: var(--shadow-sm); }
+.alert-48h-card-top {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.alert-48h-name { font-weight: 600; font-size: 0.88rem; color: var(--text); }
+.alert-48h-bed { font-size: 0.73rem; color: var(--text-muted); background: var(--border); padding: 1px 8px; border-radius: 99px; }
+.alert-48h-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+.alert-48h-badge.badge-warn { background: var(--warning-light); color: var(--warning); }
+.alert-48h-checks { display: flex; gap: 20px; font-size: 0.78rem; }
+.alert-48h-check { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
+.alert-48h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.alert-48h-check.check-ok { color: var(--success); }
+.alert-48h-check.check-ok .alert-48h-dot { background: var(--success); }
+.alert-48h-check.check-fail { color: var(--danger); }
+.alert-48h-check.check-fail .alert-48h-dot { background: var(--danger); }
+.alert-48h-check.check-warn { color: var(--warning); font-weight: 500; }
+.alert-48h-check.check-warn .alert-48h-dot { background: var(--warning); }

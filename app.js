@@ -33,6 +33,17 @@ const OUTCOME_TYPES = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.13", date:"2026-05-29", changes:[
+    "新增ICU入住超48h评估提醒",
+    "肠内营养追踪：标记启动/48h未启动提醒",
+    "患者详情新增ICU时长+肠内营养状态",
+    "修复诊疗编辑按钮不显示的问题",
+  ]},
+  { v:"v2.12", date:"2026-05-29", changes:[
+    "诊疗类别精简为4个：日常/事件/病情变化/下一步计划",
+    "编辑按钮改为始终可见文字按钮",
+    "诊疗记录支持类别切换编辑",
+  ]},
   { v:"v2.11", date:"2026-05-28", changes:[
     "诊疗模块重构：「诊疗记录」→「诊疗」",
     "诊疗类别五色区分：日常蓝/事件橙/会诊紫/操作绿/其他灰",
@@ -248,6 +259,11 @@ function renderDashboard(main) {
     '<div class="stat-card"><div class="stat-value">' + terminatedPatients.length + '</div><div class="stat-label">已转归</div></div>' +
   '</div>';
 
+  const alerts48h = get48hAlerts();
+  if (alerts48h.length > 0) {
+    html += render48hAlerts(alerts48h);
+  }
+
   html += '<div class="dashboard-grid">';
 
   // 在科患者卡片
@@ -355,6 +371,7 @@ function showAddPatient() {
       primaryDiagnosis: document.getElementById('fNewDiag').value,
       secondaryDiagnoses: document.getElementById('fNewDiag2').value,
       outcome: null,
+      enteralNutrition: { started: false, startDate: '' },
       vitals: [], labs: [], abgs: [], microbiology: [], antibiotics: [],
       treatmentNotes: [], fluidBalance: [], scores: [],
     };
@@ -418,15 +435,18 @@ function renderPatientInfo(container, p) {
       '<div><span style="color:var(--text-muted)">状态：</span><span class="status-tag ' + (p.outcome ? 'status-terminated' : 'status-active') + '">' + (p.outcome ? '已转归' : '在科') + '</span></div>' +
     '</div>';
   if (p.secondaryDiagnoses) html += '<div style="margin-top:8px;font-size:0.85rem;"><span style="color:var(--text-muted)">次要诊断：</span>' + escHtml(p.secondaryDiagnoses) + '</div>';
+  const en = p.enteralNutrition;
+  const icuH = icuHours(p.admissionDate);
+  html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+    '<span style="font-size:0.82rem;color:var(--text-muted)">ICU已住：<strong style="color:' + (icuH > 48 ? 'var(--danger)' : 'var(--text)') + '">' + Math.floor(icuH / 24) + '天' + (icuH % 24) + '小时</strong></span>' +
+    '<span style="font-size:0.82rem;color:var(--text-muted)">肠内营养：<strong style="color:' + (en && en.started ? 'var(--success)' : 'var(--warning)') + '">' + (en && en.started ? '已启动 (' + (en.startDate || '') + ')' : '未启动') + '</strong></span>' +
+    '<button class="btn btn-sm" onclick="markEnteralNutrition(\x27' + p.id + '\x27')" style="font-size:0.72rem;">标记肠内营养</button>' +
+  '</div>';
   html += '</div>';
 
   html += '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">诊疗</span><button class="btn btn-sm btn-primary" onclick="showAddNote(\'' + p.id + '\')">添加记录</button></div>';
   if (p.treatmentNotes && p.treatmentNotes.length > 0) {
-    const notes = [...p.treatmentNotes].reverse();
-    const catMap = { daily: '日常', event: '事件', change: '病情变化', plan: '下一步计划' };
-    notes.forEach(n => {
-      html += '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;">' + renderNoteBadge(n.category, catMap[n.category] || n.category) + '<span style="font-size:0.75rem;color:var(--text-muted)">' + escHtml(fmtDateTime(n.timestamp)) + '</span></div><p style="font-size:0.85rem;white-space:pre-wrap;">' + escHtml(n.note) + '</p></div>';
-    });
+    html += renderTreatmentNotes(p);
   } else {
     html += '<div class="empty-state"><p>暂无诊疗</p></div>';
   }
@@ -1054,6 +1074,61 @@ function showAddAntibiotic(pid) {
     if (!p.antibiotics) p.antibiotics = [];
     p.antibiotics.push({ drug: document.getElementById('fADrug').value, startDate: document.getElementById('fAStart').value, endDate: document.getElementById('fAEnd').value || null, dose: document.getElementById('fADose').value, route: document.getElementById('fARoute').value });
     saveState(); closeModal(); renderPatientSubTab('micro'); toast('抗生素已添加', 'success');
+  });
+}
+
+// ICU入住超48h检测
+function icuHours(admissionDate) {
+  if (!admissionDate) return 0;
+  return Math.floor((new Date() - new Date(admissionDate + 'T00:00:00')) / 3600000);
+}
+
+function get48hAlerts() {
+  return state.patients
+    .filter(p => !p.outcome)
+    .filter(p => icuHours(p.admissionDate) > 48)
+    .map(p => ({
+      patient: p,
+      hours: icuHours(p.admissionDate),
+      enStarted: p.enteralNutrition && p.enteralNutrition.started,
+      enDate: p.enteralNutrition ? p.enteralNutrition.startDate : '',
+      enWithin48h: p.enteralNutrition && p.enteralNutrition.started && p.enteralNutrition.startDate &&
+        (new Date(p.enteralNutrition.startDate + 'T00:00:00') - new Date(p.admissionDate + 'T00:00:00')) / 3600000 <= 48,
+    }));
+}
+
+function render48hAlerts(alerts) {
+  let html = '<div class="alert-48h-section"><div class="alert-48h-header"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>ICU入住超48h评估提醒</div><div class="alert-48h-list">';
+  alerts.forEach(a => {
+    const p = a.patient;
+    html += '<div class="alert-48h-card" onclick="openPatient(\x27' + p.id + '\x27')">' +
+      '<div class="alert-48h-card-top"><span class="alert-48h-name">' + escHtml(p.name) + '</span><span class="alert-48h-bed">' + escHtml(p.bed) + '</span><span class="alert-48h-badge badge-warn">' + Math.floor(a.hours / 24) + '天</span></div>' +
+      '<div class="alert-48h-checks">' +
+        '<div class="alert-48h-check' + (a.enStarted ? ' check-ok' : ' check-fail') + '">' +
+          '<span class="alert-48h-dot"></span>' +
+          '肠内营养' + (a.enStarted ? (a.enWithin48h ? ' (48h内已启动)' : ' (已启动)') : ' 未启动') +
+        '</div>' +
+        '<div class="alert-48h-check check-warn">' +
+          '<span class="alert-48h-dot"></span>' +
+          '入住超' + Math.floor(a.hours / 24) + 'h' +
+        '</div>' +
+      '</div></div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function markEnteralNutrition(pid) {
+  const p = getPatient(pid);
+  if (!p) return;
+  if (!p.enteralNutrition) p.enteralNutrition = { started: false, startDate: '' };
+  const body = '<div class="form-group"><label class="form-label">肠内营养启动日期</label><input class="form-input" id="fENDate" type="date" value="' + (p.enteralNutrition.startDate || todayStr()) + '"></div>' +
+    '<p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">标记肠内营养已启动。超48h未启动会在仪表盘提醒。</p>';
+  showModal('肠内营养 — ' + escHtml(p.name), body, function() {
+    p.enteralNutrition.started = true;
+    p.enteralNutrition.startDate = document.getElementById('fENDate').value;
+    saveState(); closeModal(); renderPatientSubTab('info');
+    toast('肠内营养已标记', 'success');
   });
 }
 
