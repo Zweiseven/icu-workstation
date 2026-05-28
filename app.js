@@ -34,6 +34,10 @@ const OUTCOME_TYPES = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.17", date:"2026-05-29", changes:[
+    "PWA缓存破坏机制：JS/CSS带版本号参数强制刷新",
+    "编辑信息弹窗新增肠内营养是/否+原因编辑",
+  ]},
   { v:"v2.16", date:"2026-05-29", changes:[
     "转归管理：已出科患者可编辑信息",
     "转归卡片新增肠内营养状态 + ICU入住天数显示",
@@ -935,7 +939,9 @@ function doOutcomeRender() {
 function showPatientEdit(id) {
   const p = getPatient(id);
   if (!p) return;
-  const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fPName" value="' + escHtml(p.name || '') + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fPBed" value="' + escHtml(p.bed || '') + '"></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fPAge" type="number" value="' + escHtml(p.age || '') + '"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fPGender"><option value="男"' + (p.gender === '男' ? ' selected' : '') + '>男</option><option value="女"' + (p.gender === '女' ? ' selected' : '') + '>女</option></select></div><div class="form-group"><label class="form-label">入住ICU日期</label><input class="form-input" id="fPAdmit" type="datetime-local" value="' + escHtml(p.admissionDate || '') + '"></div></div><div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fPDiag" value="' + escHtml(p.primaryDiagnosis || '') + '"></div><div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fPDiag2" value="' + escHtml(p.secondaryDiagnoses || '') + '"></div>';
+  const body = '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="fPName" value="' + escHtml(p.name || '') + '"></div><div class="form-group"><label class="form-label">床号</label><input class="form-input" id="fPBed" value="' + escHtml(p.bed || '') + '"></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">年龄</label><input class="form-input" id="fPAge" type="number" value="' + escHtml(p.age || '') + '"></div><div class="form-group"><label class="form-label">性别</label><select class="form-select" id="fPGender"><option value="男"' + (p.gender === '男' ? ' selected' : '') + '>男</option><option value="女"' + (p.gender === '女' ? ' selected' : '') + '>女</option></select></div><div class="form-group"><label class="form-label">入住ICU日期</label><input class="form-input" id="fPAdmit" type="datetime-local" value="' + escHtml(p.admissionDate || '') + '"></div></div><div class="form-group"><label class="form-label">主要诊断</label><input class="form-input" id="fPDiag" value="' + escHtml(p.primaryDiagnosis || '') + '"></div><div class="form-group"><label class="form-label">次要诊断（逗号分隔）</label><input class="form-input" id="fPDiag2" value="' + escHtml(p.secondaryDiagnoses || '') + '"></div>' +
+    '<div class="form-group"><label class="form-label">肠内营养</label><select class="form-select" id="fPENStarted" onchange="document.getElementById(\'fPENReasonRow\').style.display=this.value===\'false\'?\'block\':\'none\'"><option value="true"' + ((p.enteralNutrition && p.enteralNutrition.started) ? ' selected' : '') + '>是，已启动</option><option value="false"' + (!p.enteralNutrition || !p.enteralNutrition.started ? ' selected' : '') + '>否，未启动</option></select></div>' +
+    '<div class="form-group" id="fPENReasonRow" style="display:' + ((p.enteralNutrition && p.enteralNutrition.started) ? 'none' : 'block') + ';"><label class="form-label">未启动原因</label><textarea class="form-textarea" id="fPENReason">' + escHtml((p.enteralNutrition && p.enteralNutrition.reason) || '') + '</textarea></div>';
 
   showModal('编辑患者信息', body, function() {
     p.name = document.getElementById('fPName').value;
