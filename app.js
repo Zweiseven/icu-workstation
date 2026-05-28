@@ -1175,38 +1175,65 @@ saveState = function() {
 // 智能导出：手机用 Web Share API 分享到云盘，桌面下载
 async function smartExport() {
   const exportObj = {
-    version: '2.6',
+    version: '2.9',
     updatedAt: new Date().toISOString(),
     patients: state.patients,
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
+  const fileName = 'ICU工作站_备份_' + todayStr() + '.json';
+
+  // 尝试 Web Share（部分手机有效）
   const blob = new Blob([jsonStr], { type: 'text/plain' });
   const file = new File([blob], 'icu_data_' + todayStr() + '.json', { type: 'text/plain' });
-
-  // 手机端：Web Share API → 直接分享到云盘 App
+  let cloudShared = false;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: 'ICU 工作站数据备份' });
-      toast('已发送到云盘', 'success');
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-    }
+      cloudShared = true;
+    } catch(e) {}
   }
 
-  // 桌面 / 降级：下载文件
-  const url = URL.createObjectURL(blob);
+  // 下载文件（手机保底方案）
+  const dlBlob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dlBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'ICU工作站_数据备份_' + todayStr() + '.json';
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('数据已导出', 'success');
+
+  if (cloudShared) {
+    toast('已发送。如未成功同步，文件也已保存到下载文件夹。', 'success');
+  } else if (supportsCloudSync()) {
+    toast('数据已导出', 'success');
+  } else {
+    // 手机端：给清晰的上传指引
+    showMobileUploadGuide(fileName);
+  }
 }
 
-// 统一同步面板
+function showMobileUploadGuide(fileName) {
+  var body = '<div style="text-align:center;padding:8px 0;">' +
+    '<div style="font-size:2rem;margin-bottom:8px;">📤</div>' +
+    '<p style="font-weight:600;margin-bottom:12px;">文件已保存到下载文件夹</p>' +
+    '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:14px;text-align:left;font-size:0.82rem;color:var(--text-secondary);line-height:2;">' +
+      '<strong>上传到 OneDrive：</strong><br>' +
+      '① 打开手机上的 <strong>OneDrive App</strong><br>' +
+      '② 点右下角 <strong>+</strong> → <strong>上传</strong><br>' +
+      '③ 选择 <strong>下载</strong> 文件夹<br>' +
+      '④ 找到 <strong>' + escHtml(fileName) + '</strong><br>' +
+      '⑤ 上传到 OneDrive 中与电脑同步的文件夹' +
+    '</div>' +
+    '<p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;">上传后，电脑端如已启用云同步会自动读取。<br>也可在电脑端点「数据同步」→「从文件导入」手动导入。</p>' +
+  '</div>';
+  showModal('上传到云盘', body, function() { closeModal(); });
+  setTimeout(function() {
+    var saveBtn = document.getElementById('modalSaveBtn');
+    if (saveBtn) saveBtn.textContent = '知道了';
+  }, 50);
+}// 统一同步面板
 function showSyncPanel() {
   const hasCloudSync = supportsCloudSync();
   let body = '';
@@ -1238,8 +1265,8 @@ function showSyncPanel() {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>同步方法</strong><br>' +
       '<strong>前提：必须先将 ICU 工作站安装到手机主屏幕</strong>（Chrome → 添加到主屏幕），否则分享列表不会出现 ICU 工作站。<br><br>' +
-      '<strong>电脑 → 手机：</strong> 电脑导出 → 保存到云盘 → 手机云盘App → 找到文件 → 分享 → 选「ICU工作站」<br>' +
-      '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 选云盘App保存 → 电脑点「从文件导入」' +
+      '<strong>电脑 → 手机：</strong> 电脑导出备份 → 保存到 OneDrive → 手机 OneDrive App 中找到文件 → 分享 → 选「ICU工作站」（需已安装到主屏幕）<br>' +
+      '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 文件自动下载 → 按指引上传到 OneDrive → 电脑端自动同步或手动导入' +
     '</div>';
   } else {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
