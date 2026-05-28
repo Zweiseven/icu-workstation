@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
 <title>ICU 工作站 — 重症医学科患者管理系统</title>
-<link rel="stylesheet" href="styles.css?v=202605290500">
+<link rel="stylesheet" href="styles.css?v=202605290530">
 </head>
 <body>
 
@@ -34,11 +34,7 @@
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>患者详情</span>
     </button>
-    <button class="nav-item" data-view="handover">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
-      <span>交班记录</span>
-    </button>
-    <button class="nav-item" data-view="outcome">
+        <button class="nav-item" data-view="outcome">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>转归管理</span>
     </button>
@@ -47,10 +43,10 @@
     <button class="btn btn-sm btn-primary" onclick="showSyncPanel()" style="width:100%;margin-bottom:4px;justify-content:center;font-size:0.8rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>数据同步</button>
     <span class="footer-badge" id="syncStatus">本地运行 · 数据不上传</span>
     <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">检查更新</button>
-    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="查看更新日志">v2.19</span>
+    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="查看更新日志">v2.20</span>
   </div>
   <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
-  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="更新日志">v2.19</span><button class="mini-update-btn" onclick="showSyncPanel()" title="数据同步"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
+  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="更新日志">v2.20</span><button class="mini-update-btn" onclick="showSyncPanel()" title="数据同步"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
 </aside>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -66,7 +62,7 @@
 <!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="app.js?v=202605290500"></script>
+<script src="app.js?v=202605290530"></script>
 
 
 
@@ -74,7 +70,7 @@
 
 <script>
 // ICU 工作站 v2.6 — 定期轮询 + 更新通知横幅
-const APP_VERSION = '202605290500';
+const APP_VERSION = '202605290530';
 
 (async function bootstrap() {
   if (!('serviceWorker' in navigator)) return;

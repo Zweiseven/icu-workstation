@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.20", date:"2026-05-29", changes:[
+    "移除交班记录模块，精简为核心三模块",
+  ]},
   { v:"v2.19", date:"2026-05-29", changes:[
     "患者卡片新增删除功能（病区总览 + 转归管理）",
     "删除前弹出确认对话框防止误操作",
@@ -274,7 +277,6 @@ function render() {
   switch(state.currentView) {
     case 'dashboard': renderDashboard(main); break;
     case 'patient': renderPatientDetail(main); break;
-    case 'handover': renderHandover(main); break;
     case 'outcome': renderOutcome(main); break;
     default: renderDashboard(main);
   }
@@ -299,7 +301,7 @@ function renderDashboard(main) {
     }).length;
   });
 
-  let html = '<div class="page-header"><div><h1 class="page-title">病区总览</h1><p class="page-subtitle">' + fmtDate(new Date()) + ' \u00b7 在科患者 ' + activePatients.length + ' 人 \u00b7 累计管理 ' + state.patients.length + ' 人</p></div><div class="page-actions"><button class="btn btn-primary" onclick="showAddPatient()">+ 收入患者</button><button class="btn" onclick="navigate(\'handover\')">生成交班记录</button></div></div>';
+  let html = '<div class="page-header"><div><h1 class="page-title">病区总览</h1><p class="page-subtitle">' + fmtDate(new Date()) + ' \u00b7 在科患者 ' + activePatients.length + ' 人 \u00b7 累计管理 ' + state.patients.length + ' 人</p></div><div class="page-actions"><button class="btn btn-primary" onclick="showAddPatient()">+ 收入患者</button></div></div>';
 
   // 快速统计
   html += '<div class="quick-stats">' +
@@ -698,106 +700,6 @@ function renderPatientMicro(container, p) {
 }
 
 
-// ============================================
-//  3. 交班记录 (Handover - SBAR)
-// ============================================
-function renderHandover(main) {
-  const activePatients = state.patients.filter(p => !p.outcome);
-  let html = '<div class="page-header"><div><h1 class="page-title">交班记录生成</h1><p class="page-subtitle">SBAR 格式结构化交班</p></div><div class="page-actions"><button class="btn btn-primary" id="btnGenerateHandover">生成交班记录</button><button class="btn" id="btnPrintHandover">打印</button><button class="btn" id="btnCopyHandover">复制</button></div></div>';
-
-  if (activePatients.length > 0) {
-    html += '<div class="patient-selector" id="handoverPatientSelector">';
-    activePatients.forEach(p => {
-      html += '<button class="patient-chip" data-pid="' + p.id + '">' + escHtml(p.name || '未命名') + ' (' + escHtml(p.bed) + ')</button>';
-    });
-    html += '</div>';
-  }
-  html += '<div class="card"><div class="handover-output" id="handoverOutput">选择患者后点击「生成交班记录」</div></div>';
-
-  main.innerHTML = html;
-
-  $$('#handoverPatientSelector .patient-chip').forEach(chip => {
-    chip.onclick = function() {
-      $$('#handoverPatientSelector .patient-chip').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-    };
-  });
-  const firstChip = $('#handoverPatientSelector .patient-chip');
-  if (firstChip) firstChip.classList.add('active');
-
-  document.getElementById('btnGenerateHandover').onclick = generateHandover;
-  document.getElementById('btnPrintHandover').onclick = () => window.print();
-  document.getElementById('btnCopyHandover').onclick = () => {
-    const text = document.getElementById('handoverOutput').innerText;
-    navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板', 'success')).catch(() => toast('复制失败', 'error'));
-  };
-}
-
-function generateHandover() {
-  const active = $('#handoverPatientSelector .patient-chip.active');
-  if (!active) { toast('请先选择患者', 'error'); return; }
-  const p = getPatient(active.dataset.pid);
-  if (!p) return;
-
-  const latestVitals = (p.vitals && p.vitals.length > 0) ? p.vitals[p.vitals.length - 1] : null;
-  const latestAbg = (p.abgs && p.abgs.length > 0) ? p.abgs[p.abgs.length - 1] : null;
-  const activeAbx = (p.antibiotics || []).filter(a => !a.endDate);
-  const latestNotes = (p.treatmentNotes && p.treatmentNotes.length > 0) ? [...p.treatmentNotes].reverse().slice(0, 3) : [];
-  let sb = '========================================\n';
-  sb += '  ICU 交班记录 (SBAR 格式)\n';
-  sb += '  生成时间: ' + fmtDateTime(new Date()) + '\n';
-  sb += '========================================\n\n';
-  sb += '【S — 现状 Situation】\n';
-  sb += '患者: ' + (p.name || '—') + '    床号: ' + (p.bed || '—') + '\n';
-  sb += '年龄/性别: ' + (p.age || '—') + '岁 / ' + (p.gender || '—') + '\n';
-  sb += '主诊断: ' + (p.primaryDiagnosis || '—') + '\n';
-  if (p.secondaryDiagnoses) sb += '其他诊断: ' + p.secondaryDiagnoses + '\n';
-  sb += '入住ICU: ' + (fmtDate(p.admissionDate) || '—') + '\n\n';
-
-  sb += '【B — 背景 Background】\n';
-  if (latestVitals) {
-    sb += '生命体征: HR ' + (latestVitals.hr || '—') + ' bpm, BP ' + (latestVitals.sbp || '—') + '/' + (latestVitals.dbp || '—') + ' mmHg';
-    if (latestVitals.cvp) sb += ', CVP ' + latestVitals.cvp + ' mmHg';
-    sb += ', SpO2 ' + (latestVitals.spo2 || '—') + '%, RR ' + (latestVitals.rr || '—') + ' bpm, 体温 ' + (latestVitals.temp || '—') + '度\n';
-  }
-  if (latestAbg) {
-    sb += '血气: pH ' + (latestAbg.ph || '—') + ', PaCO2 ' + (latestAbg.paco2 || '—') + ' mmHg, PaO2 ' + (latestAbg.pao2 || '—') + ' mmHg';
-    sb += ', HCO3 ' + (latestAbg.hco3 || '—') + ' mmol/L, Lac ' + (latestAbg.lac || '—') + ' mmol/L';
-    if (latestAbg.fio2) sb += ', FiO2 ' + latestAbg.fio2 + '%';
-    sb += ' -> ' + interpretABG(latestAbg) + '\n';
-  }
-  if (activeAbx.length > 0) {
-    sb += '当前抗生素: ' + activeAbx.map(a => {
-      const days = a.startDate ? Math.floor((new Date() - new Date(a.startDate)) / 86400000) : 0;
-      return a.drug + ' (第' + days + '天)';
-    }).join(', ') + '\n';
-  }
-  sb += '\n';
-
-  sb += '【A — 评估 Assessment】\n';
-  if (latestNotes.length > 0) {
-    latestNotes.forEach(n => {
-      const catMap = { daily: '日常', event: '事件', change: '病情变化', plan: '下一步计划' };
-      sb += '  [' + (NOTE_COLORS[n.category]?.label || NOTE_COLORS.daily.label) + '] ' + n.note.substring(0, 120) + (n.note.length > 120 ? '...' : '') + '\n';
-    });
-  }
-  sb += '\n';
-
-  sb += '【R — 建议 Recommendation】\n';
-  sb += '□ 继续当前治疗方案\n';
-  sb += '□ 抗生素降阶梯评估\n';
-  sb += '□ 每日唤醒 / SBT 评估\n';
-  sb += '□ 深静脉血栓预防\n';
-  sb += '□ 营养支持评估\n';
-  sb += '□ 管路拔除评估\n';
-  sb += '其他待办: \n\n';
-  sb += '========================================\n';
-  sb += '  交班医师: ___________    接班医师: ___________\n';
-  sb += '========================================\n';
-
-  document.getElementById('handoverOutput').innerText = sb;
-  toast('交班记录已生成', 'success');
-}
 // ============================================
 //  4. 转归管理（检索 + 按月归纳）
 // ============================================
@@ -1288,13 +1190,12 @@ async function init() {
       switch(e.key) {
         case '1': e.preventDefault(); navigate('dashboard'); break;
         case '2': e.preventDefault(); navigate('patient'); break;
-        case '3': e.preventDefault(); navigate('handover'); break;
         case '4': e.preventDefault(); navigate('outcome'); break;
       }
     }
   });
   console.log('ICU 工作站 v2.0 已就绪');
-  console.log('快捷键: Ctrl+1~5 切换模块');
+  console.log('快捷键: Ctrl+1~4 切换模块');
   console.log('本地运行，数据不上传');
 }
 document.addEventListener('DOMContentLoaded', init);
