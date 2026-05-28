@@ -1045,7 +1045,7 @@ async function saveFileHandle(handle) {
   const db = await openSyncDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').put(handle, 'syncFile');
+    tx.objectStore('handles').put(handle, 'syncDir');
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = (e) => { db.close(); reject(e.target.error); };
   });
@@ -1055,7 +1055,7 @@ async function getFileHandle() {
   const db = await openSyncDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('handles', 'readonly');
-    const req = tx.objectStore('handles').get('syncFile');
+    const req = tx.objectStore('handles').get('syncDir');
     req.onsuccess = () => { db.close(); resolve(req.result || null); };
     req.onerror = (e) => { db.close(); reject(e.target.error); };
   });
@@ -1065,68 +1065,70 @@ async function clearFileHandle() {
   const db = await openSyncDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').delete('syncFile');
+    tx.objectStore('handles').delete('syncDir');
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = (e) => { db.close(); reject(e.target.error); };
   });
 }
 
-// 检查浏览器是否支持 File System Access API
 function supportsCloudSync() {
-  return typeof window.showSaveFilePicker === 'function';
+  return typeof window.showDirectoryPicker === 'function';
 }
 
-// 启用云同步 - 选择 OneDrive/坚果云 等同步文件夹中的文件
-async function enableCloudSync() {
-  if (!supportsCloudSync()) {
-    toast('当前浏览器不支持云同步。请使用 Chrome 或 Edge，或使用导出/导入功能。', 'error');
-    return;
-  }
+// 从目录句柄获取或创建 icu_data.json 文件句柄
+async function getSyncFileHandle(dirHandle) {
   try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'icu_data.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-    });
-    await saveFileHandle(handle);
-    // 立即写入当前数据
-    await writeToSyncFile(handle);
-    updateSyncStatus(true);
-    toast('云同步已启用。数据将自动同步到所选文件。', 'success');
+    return await dirHandle.getFileHandle('icu_data.json', { create: true });
   } catch(e) {
-    if (e.name !== 'AbortError') {
-      toast('启用同步失败: ' + e.message, 'error');
+    // 权限过期重新请求
+    if (e.name === 'NotAllowedError') {
+      const ok = await dirHandle.requestPermission({ mode: 'readwrite' });
+      if (ok) return await dirHandle.getFileHandle('icu_data.json', { create: true });
     }
+    throw e;
   }
 }
 
-// 写入数据到同步文件
-async function writeToSyncFile(handle) {
-  if (!handle) {
+async function writeToSyncFile(dirHandle) {
+  if (!dirHandle) {
     const h = await getFileHandle();
     if (!h) return;
-    handle = h;
+    dirHandle = h;
   }
   try {
+    // 确保目录权限
+    if ((await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      await dirHandle.requestPermission({ mode: 'readwrite' });
+    }
+
+    const fileHandle = await getSyncFileHandle(dirHandle);
     const exportObj = { version: '2.9', updatedAt: new Date().toISOString(), patients: state.patients };
     const content = JSON.stringify(exportObj, null, 2);
-    const writable = await handle.createWritable();
+
+    const writable = await fileHandle.createWritable();
     await writable.truncate(0);
     await writable.write(content);
     await writable.close();
-    await handle.getFile();
+    // 读回触发文件系统事件
+    await fileHandle.getFile();
     console.log('云同步已写入: ' + exportObj.patients.length + ' 位患者');
   } catch(e) {
     console.warn('云同步写入失败:', e.message);
   }
 }
 
-async function readFromSyncFile(handle) {
+async function readFromSyncFile(dirHandle) {
+  if (!dirHandle) {
+    const h = await getFileHandle();
+    if (!h) return false;
+    dirHandle = h;
+  }
   try {
-    const file = await handle.getFile();
+    const fileHandle = await getSyncFileHandle(dirHandle);
+    const file = await fileHandle.getFile();
     const text = await file.text();
     const imported = JSON.parse(text);
     if (imported.patients && Array.isArray(imported.patients)) {
-      // 比较时间戳，只在新数据更新时才覆盖
       state.patients = imported.patients;
       localStorage.setItem('icu_workstation_v2', JSON.stringify(state));
       return true;
@@ -1137,25 +1139,18 @@ async function readFromSyncFile(handle) {
   return false;
 }
 
-// 更新同步状态显示
 async function updateSyncStatus(active) {
   const statusEl = document.getElementById('syncStatus');
-  const btnEl = document.getElementById('btnCloudSync');
-  if (!statusEl || !btnEl) return;
+  if (!statusEl) return;
   if (active) {
-    statusEl.textContent = '云同步已启用';
+    statusEl.textContent = '云同步已启用 · 数据自动保存';
     statusEl.style.color = 'var(--success)';
-    btnEl.textContent = '关闭云同步';
-    btnEl.onclick = disableCloudSync;
   } else {
     statusEl.textContent = '本地运行 · 数据不上传';
     statusEl.style.color = '';
-    btnEl.textContent = '启用云同步';
-    btnEl.onclick = enableCloudSync;
   }
 }
 
-// 关闭云同步
 async function disableCloudSync() {
   await clearFileHandle();
   updateSyncStatus(false);
@@ -1166,7 +1161,6 @@ async function disableCloudSync() {
 const _originalSaveState = saveState;
 saveState = function() {
   _originalSaveState();
-  // 异步写入同步文件（不阻塞UI）
   getFileHandle().then(handle => {
     if (handle) writeToSyncFile(handle);
   }).catch(() => {});
@@ -1175,7 +1169,6 @@ saveState = function() {
 //  数据同步面板（统一入口）
 // ============================================
 
-// 智能导出：手机用 Web Share API 分享到云盘，桌面下载
 async function smartExport() {
   const exportObj = {
     version: '2.9',
@@ -1183,12 +1176,8 @@ async function smartExport() {
     patients: state.patients,
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
-
-  // 始终使用 icu_data.json 作为文件名——与电脑端自动同步的文件完全一致
-  // 上传到同一 OneDrive 文件夹后覆盖原文件，电脑端就会自动读取
   const syncFileName = 'icu_data.json';
 
-  // 尝试 Web Share（部分手机有效）
   const blob = new Blob([jsonStr], { type: 'text/plain' });
   const file = new File([blob], syncFileName, { type: 'text/plain' });
   let cloudShared = false;
@@ -1199,7 +1188,6 @@ async function smartExport() {
     } catch(e) {}
   }
 
-  // 下载文件
   const dlBlob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(dlBlob);
   const a = document.createElement('a');
@@ -1217,45 +1205,45 @@ async function smartExport() {
   } else {
     showMobileUploadGuide(syncFileName);
   }
-}function showMobileUploadGuide(fileName) {
+}
+
+function showMobileUploadGuide(fileName) {
   var body = '<div style="text-align:center;padding:8px 0;">' +
     '<div style="font-size:2rem;margin-bottom:8px;">🔄</div>' +
     '<p style="font-weight:600;margin-bottom:4px;">文件已下载：<code style="background:var(--primary-light);padding:2px 8px;border-radius:4px;">' + escHtml(fileName) + '</code></p>' +
     '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">与电脑端自动同步的是同一个文件</p>' +
     '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:14px;text-align:left;font-size:0.82rem;color:var(--text-secondary);line-height:2;">' +
-      '<strong>上传到 OneDrive 实现同步：</strong><br>' +
-      '① 打开 <strong>OneDrive App</strong><br>' +
-      '② 进入与电脑同步的 <strong>同一文件夹</strong><br>' +
-      '③ 点 <strong>+ → 上传</strong>，选下载文件夹<br>' +
+      '<strong>上传到云盘实现同步：</strong><br>' +
+      '① 打开云盘 App<br>' +
+      '② 进入与电脑同步的同一文件夹<br>' +
+      '③ 点 + → 上传，选下载文件夹<br>' +
       '④ 找到 <strong>' + escHtml(fileName) + '</strong><br>' +
-      '⑤ 如提示「已存在同名文件」，选 <strong>替换/覆盖</strong><br>' +
+      '⑤ 如提示同名文件，选替换/覆盖<br>' +
       '⑥ 电脑端会自动检测到更新并读取' +
     '</div>' +
-    '<p style="font-size:0.73rem;color:var(--text-muted);margin-top:10px;">' +
-      '文件名固定为 icu_data.json，与电脑端完全一致。<br>每次上传覆盖后，电脑会自动同步最新数据。</p>' +
+    '<p style="font-size:0.73rem;color:var(--text-muted);margin-top:10px;">文件名为 icu_data.json，与电脑端一致。每次覆盖后电脑自动同步最新数据。</p>' +
   '</div>';
-  showModal('同步到 OneDrive', body, function() { closeModal(); });
+  showModal('同步到云盘', body, function() { closeModal(); });
   setTimeout(function() {
     var saveBtn = document.getElementById('modalSaveBtn');
     if (saveBtn) saveBtn.textContent = '知道了';
   }, 50);
-}// 统一同步面板
+}
+
 function showSyncPanel() {
   const hasCloudSync = supportsCloudSync();
   let body = '';
 
-  // === 桌面端：云盘自动同步 ===
   if (hasCloudSync) {
     body += '<div style="background:var(--primary-light);border-radius:var(--radius);padding:14px;margin-bottom:14px;">' +
       '<div style="font-weight:600;color:var(--primary-dark);margin-bottom:4px;">桌面端 · 云盘自动同步</div>' +
-      '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">选择云盘文件夹中的文件后，每次修改自动保存。云盘会自动把最新数据同步到手机。</p>' +
+      '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">选择云盘同步文件夹，之后每次修改自动保存 icu_data.json。请确认云盘客户端正在运行且同步状态正常。</p>' +
       '</div>';
 
-    body += '<button class="btn btn-primary" id="btnStartCloudSync" style="width:100%;margin-bottom:10px;justify-content:center;">选择云盘文件，启用自动同步</button>';
+    body += '<button class="btn btn-primary" id="btnStartCloudSync" style="width:100%;margin-bottom:10px;justify-content:center;">选择云盘同步文件夹</button>';
     body += '<div id="syncPanelStatus" style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-bottom:4px;"></div>';
   }
 
-  // === 手动操作（两端通用）===
   body += '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">' +
     '<p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">手动操作</p>' +
     '<div style="display:flex;gap:8px;">' +
@@ -1266,18 +1254,17 @@ function showSyncPanel() {
     '</div>' +
   '</div>';
 
-  // === 同步指南 ===
   if (!hasCloudSync) {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>同步方法</strong><br>' +
       '<strong>前提：必须先将 ICU 工作站安装到手机主屏幕</strong>（Chrome → 添加到主屏幕），否则分享列表不会出现 ICU 工作站。<br><br>' +
-      '<strong>电脑 → 手机：</strong> 电脑导出备份 → 保存到 OneDrive → 手机 OneDrive App 中找到文件 → 分享 → 选「ICU工作站」（需已安装到主屏幕）<br>' +
-      '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 文件自动下载 → 按指引上传到 OneDrive → 电脑端自动同步或手动导入' +
+      '<strong>电脑 → 手机：</strong> 电脑导出备份 → 保存到云盘 → 手机云盘 App 中找到文件 → 分享 → 选「ICU工作站」（需已安装到主屏幕）<br>' +
+      '<strong>手机 → 电脑：</strong> 点「分享到云盘」→ 文件自动下载 → 按指引上传到云盘 → 电脑端自动同步或手动导入' +
     '</div>';
   } else {
     body += '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:12px;margin-top:14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.8;">' +
       '<strong>手机端同步</strong><br>' +
-      '电脑数据每次修改后自动写入同步文件夹的 icu_data.json。请确认云盘客户端正在运行且同步状态正常。如未自动同步，尝试暂停再恢复云盘同步。手机同步：<br>' +
+      '电脑数据每次修改后自动写入同步文件夹的 icu_data.json。请确认云盘客户端正在运行且同步状态正常。如未自动同步，尝试暂停再恢复云盘同步。<br>手机同步：<br>' +
       '① 确保已将 ICU 工作站安装到主屏幕<br>' +
       '② 打开云盘 App → 找到 icu_data.json<br>' +
       '③ 分享该文件 → 选择「ICU 工作站」即可导入' +
@@ -1286,7 +1273,6 @@ function showSyncPanel() {
 
   showModal('数据同步', body, function() { closeModal(); });
 
-  // 检查是否已有同步文件
   setTimeout(async () => {
     if (!hasCloudSync) return;
     const statusEl = document.getElementById('syncPanelStatus');
@@ -1296,42 +1282,36 @@ function showSyncPanel() {
       const h = await getFileHandle();
       if (h) {
         statusEl.textContent = '✓ 云同步已启用 — 每次修改自动保存';
-        // 额外提示：确认云盘客户端正在运行且已开启实时同步
         statusEl.style.color = 'var(--success)';
-        btnEl.textContent = '重新选择云盘文件';
+        btnEl.textContent = '重新选择同步文件夹';
       }
     } catch(e) {}
   }, 100);
 
-  // 绑定云同步按钮
   setTimeout(() => {
     const btn = document.getElementById('btnStartCloudSync');
     if (btn) btn.onclick = startCloudSync;
   }, 100);
 
-  // 改保存按钮为关闭
   setTimeout(() => {
     const saveBtn = document.getElementById('modalSaveBtn');
     if (saveBtn) saveBtn.textContent = '关闭';
   }, 50);
 }
 
-// 启动云同步
+// 启动云同步：选择文件夹而非单个文件（目录级访问更可靠）
 async function startCloudSync() {
   if (!supportsCloudSync()) return;
   try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'icu_data.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-    });
-    await saveFileHandle(handle);
-    await writeToSyncFile(handle);
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await saveFileHandle(dirHandle);
+    await writeToSyncFile(dirHandle);
     updateSyncStatus(true);
     closeModal();
-    toast('云同步已启用，数据将自动保存', 'success');
+    toast('云同步已启用。数据将自动保存到 ' + dirHandle.name + '/icu_data.json', 'success');
   } catch(e) {
     if (e.name !== 'AbortError') {
-      toast('保存失败: ' + e.message, 'error');
+      toast('设置失败: ' + e.message, 'error');
     }
   }
 }
