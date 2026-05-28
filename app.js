@@ -34,6 +34,11 @@ const OUTCOME_TYPES = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.16", date:"2026-05-29", changes:[
+    "转归管理：已出科患者可编辑信息",
+    "转归卡片新增肠内营养状态 + ICU入住天数显示",
+    "编辑信息弹窗对在科/出科患者通用",
+  ]},
   { v:"v2.15", date:"2026-05-29", changes:[
     "肠内营养简化为是/否选择，未启动需填写原因",
     "治疗转归自动记录ICU入住是否超48h",
@@ -909,12 +914,16 @@ function doOutcomeRender() {
     if (p.outcome && p.outcome.icuOver48h !== undefined) {
       html += '<div style="font-size:0.75rem;color:' + (p.outcome.icuOver48h ? 'var(--warning)' : 'var(--text-muted)') + ';margin-top:4px;">ICU入住超48h: ' + (p.outcome.icuOver48h ? '是' : '否') + '</div>';
     }
+      const enStat = p.enteralNutrition;
+    html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">肠内营养: ' + (enStat && enStat.started ? '是' : '否' + (enStat && enStat.reason ? '（' + escHtml(enStat.reason) + '）' : '')) + '</div>';
+    html += '<div style="font-size:0.75rem;color:var(--text-muted);">ICU已住: ' + Math.floor(icuHours(p.admissionDate) / 24) + '天</div>';
     if (p.antibiotics && p.antibiotics.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(p.antibiotics.map(a => a.drug).join(', ')) + '</div>';
     }
     if (p.treatmentNotes && p.treatmentNotes.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);">诊疗: ' + p.treatmentNotes.length + ' 条</div>';
     }
+    html += '<button class="btn btn-sm" onclick="showPatientEdit(\'' + p.id + '\')" style="margin-top:8px;font-size:0.72rem;">编辑信息</button>';
     html += '</div>';
   });
 
