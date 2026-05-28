@@ -712,3 +712,35 @@ body {
 .update-banner-close:hover {
   color: #fff;
 }
+
+/* --- Treatment Notes --- */
+.note-cat-badge {
+  font-size: 0.7rem; padding: 2px 8px; border-radius: 99px;
+  font-weight: 500; flex-shrink: 0;
+}
+.treatment-note {
+  border-bottom: 1px solid var(--border); padding: 10px 0;
+}
+.treatment-note:last-child { border-bottom: none; }
+.treatment-note-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.treatment-note-time {
+  font-size: 0.73rem; color: var(--text-muted); flex: 1;
+}
+.treatment-note-edit {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; padding: 3px; border-radius: 3px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.treatment-note:hover .treatment-note-edit { opacity: 1; }
+.treatment-note-edit:hover { color: var(--primary); background: var(--primary-light); }
+.treatment-note-body {
+  font-size: 0.85rem; white-space: pre-wrap; margin: 0;
+}
+.daily-collapse { }
+.daily-toggle {
+  margin-top: 4px; color: var(--text-muted);
+  font-family: var(--font); cursor: pointer;
+}
+.daily-toggle:hover { color: var(--primary); }

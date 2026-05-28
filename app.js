@@ -382,7 +382,7 @@ function selectTerminationOption(el) {
   el.classList.add('selected');
   document.getElementById('fTermOutcome').value = el.dataset.outcome;
 }
-// --- 2a. 基本信息 & 诊疗记录 ---
+// --- 2a. 基本信息 & 诊疗 ---
 function renderPatientInfo(container, p) {
   let html = '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">基本信息</span></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:0.85rem;">' +
@@ -396,15 +396,15 @@ function renderPatientInfo(container, p) {
   if (p.secondaryDiagnoses) html += '<div style="margin-top:8px;font-size:0.85rem;"><span style="color:var(--text-muted)">次要诊断：</span>' + escHtml(p.secondaryDiagnoses) + '</div>';
   html += '</div>';
 
-  html += '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">诊疗记录</span><button class="btn btn-sm btn-primary" onclick="showAddNote(\'' + p.id + '\')">添加记录</button></div>';
+  html += '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">诊疗</span><button class="btn btn-sm btn-primary" onclick="showAddNote(\'' + p.id + '\')">添加记录</button></div>';
   if (p.treatmentNotes && p.treatmentNotes.length > 0) {
     const notes = [...p.treatmentNotes].reverse();
-    const catMap = { daily: '日常记录', event: '重要事件', consult: '会诊记录', procedure: '操作记录', other: '其他' };
+    const catMap = { daily: '日常', event: '事件', consult: '会诊', procedure: '操作', other: '其他' };
     notes.forEach(n => {
-      html += '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="card-badge" style="background:var(--primary-light);color:var(--primary-dark);font-size:0.7rem;">' + (catMap[n.category] || n.category) + '</span><span style="font-size:0.75rem;color:var(--text-muted)">' + escHtml(fmtDateTime(n.timestamp)) + '</span></div><p style="font-size:0.85rem;white-space:pre-wrap;">' + escHtml(n.note) + '</p></div>';
+      html += '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;">' + renderNoteBadge(n.category, catMap[n.category] || n.category) + '<span style="font-size:0.75rem;color:var(--text-muted)">' + escHtml(fmtDateTime(n.timestamp)) + '</span></div><p style="font-size:0.85rem;white-space:pre-wrap;">' + escHtml(n.note) + '</p></div>';
     });
   } else {
-    html += '<div class="empty-state"><p>暂无诊疗记录</p></div>';
+    html += '<div class="empty-state"><p>暂无诊疗</p></div>';
   }
   html += '</div>';
 
@@ -494,7 +494,7 @@ function renderPatientDetail(main) {
     html += '<div class="card" style="margin-bottom:18px;border-left:4px solid var(--primary);"><div class="card-header"><span class="card-title">治疗转归</span></div><div style="font-size:0.9rem;"><p><strong>转归类型：</strong><span class="outcome-tag ' + (OUTCOME_TYPES.find(o=>o.value===p.outcome.type)?.cssClass||'') + '">' + escHtml(p.outcome.label) + '</span></p><p><strong>日期：</strong>' + escHtml(p.outcome.date) + '</p>' + (p.outcome.notes ? '<p><strong>备注：</strong>' + escHtml(p.outcome.notes) + '</p>' : '') + '</div></div>';
   }
 
-  html += '<div class="tabs" id="patientTabs"><button class="tab-btn active" data-ptab="info">基本信息 & 诊疗记录</button><button class="tab-btn" data-ptab="micro">微生物 & 抗生素</button></div><div id="patientTabContent"></div>';
+  html += '<div class="tabs" id="patientTabs"><button class="tab-btn active" data-ptab="info">基本信息 & 诊疗</button><button class="tab-btn" data-ptab="micro">微生物 & 抗生素</button></div><div id="patientTabContent"></div>';
 
   main.innerHTML = html;
 
@@ -642,7 +642,7 @@ function generateHandover() {
   if (latestNotes.length > 0) {
     latestNotes.forEach(n => {
       const catMap = { daily: '日常', event: '事件', consult: '会诊', procedure: '操作', other: '其他' };
-      sb += '  [' + (catMap[n.category] || n.category) + '] ' + n.note.substring(0, 120) + (n.note.length > 120 ? '...' : '') + '\n';
+      sb += '  [' + (NOTE_COLORS[n.category]?.label || NOTE_COLORS.other.label) + '] ' + n.note.substring(0, 120) + (n.note.length > 120 ? '...' : '') + '\n';
     });
   }
   sb += '\n';
@@ -854,7 +854,7 @@ function doOutcomeRender() {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(p.antibiotics.map(a => a.drug).join(', ')) + '</div>';
     }
     if (p.treatmentNotes && p.treatmentNotes.length > 0) {
-      html += '<div style="font-size:0.75rem;color:var(--text-muted);">诊疗记录: ' + p.treatmentNotes.length + ' 条</div>';
+      html += '<div style="font-size:0.75rem;color:var(--text-muted);">诊疗: ' + p.treatmentNotes.length + ' 条</div>';
     }
     html += '</div>';
   });
@@ -884,14 +884,113 @@ function showPatientEdit(id) {
   });
 }
 
+// 诊疗类别颜色
+const NOTE_COLORS = {
+  daily:     { bg: '#e3f0fa', fg: '#1a6cb5', label: '日常' },
+  event:     { bg: '#fef3e2', fg: '#b76e08', label: '事件' },
+  consult:   { bg: '#f3e8ff', fg: '#7c3aed', label: '会诊' },
+  procedure: { bg: '#e6f5ed', fg: '#1a8a4a', label: '操作' },
+  other:     { bg: '#f0f0f0', fg: '#666', label: '其他' },
+};
+
+function renderNoteBadge(cat, label) {
+  const c = NOTE_COLORS[cat] || NOTE_COLORS.other;
+  return '<span class="note-cat-badge" style="background:' + c.bg + ';color:' + c.fg + ';">' + escHtml(label || c.label) + '</span>';
+}
+
+function renderTreatmentNotes(p) {
+  const notes = [...p.treatmentNotes].reverse();
+  const dailyNotes = notes.filter(n => n.category === 'daily');
+  const otherNotes = notes.filter(n => n.category !== 'daily');
+  let html = '';
+
+  // 非日常记录始终展开
+  otherNotes.forEach((n, i) => {
+    const origIdx = p.treatmentNotes.indexOf(n);
+    html += renderSingleNote(n, origIdx, p.id);
+  });
+
+  // 日常记录：折叠超过2条
+  if (dailyNotes.length > 0) {
+    const showAll = dailyNotes.length <= 2;
+    const visible = showAll ? dailyNotes : dailyNotes.slice(0, 2);
+    const hidden = showAll ? [] : dailyNotes.slice(2);
+
+    if (dailyNotes.length > 2 && otherNotes.length > 0) {
+      html += '<div style="border-top:1px dashed var(--border);margin:8px 0;padding-top:8px;"></div>';
+    }
+
+    visible.forEach((n, i) => {
+      const origIdx = p.treatmentNotes.indexOf(n);
+      html += renderSingleNote(n, origIdx, p.id);
+    });
+
+    if (hidden.length > 0) {
+      const collapseId = 'dailyCollapse_' + p.id;
+      html += '<div class="daily-collapse" id="' + collapseId + '" style="display:none;">';
+      hidden.forEach((n, i) => {
+        const origIdx = p.treatmentNotes.indexOf(n);
+        html += renderSingleNote(n, origIdx, p.id);
+      });
+      html += '</div>';
+      html += '<button class="btn btn-sm daily-toggle" onclick="toggleDailyCollapse(\'' + collapseId + '\', this)" style="width:100%;justify-content:center;font-size:0.72rem;">展开 ' + hidden.length + ' 条更早的日常记录</button>';
+    }
+  }
+
+  return html;
+}
+
+function renderSingleNote(n, idx, pid) {
+  const catMap = { daily: '日常', event: '事件', consult: '会诊', procedure: '操作', other: '其他' };
+  return '<div class="treatment-note">' +
+    '<div class="treatment-note-header">' +
+      renderNoteBadge(n.category, catMap[n.category] || n.category) +
+      '<span class="treatment-note-time">' + escHtml(fmtDateTime(n.timestamp)) + '</span>' +
+      '<button class="treatment-note-edit" onclick="editNote(\'' + pid + '\', ' + idx + ')" title="编辑"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+    '</div>' +
+    '<p class="treatment-note-body">' + escHtml(n.note) + '</p>' +
+  '</div>';
+}
+
+function toggleDailyCollapse(collapseId, btn) {
+  const el = document.getElementById(collapseId);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = '收起';
+  } else {
+    el.style.display = 'none';
+    const count = el.querySelectorAll('.treatment-note').length;
+    btn.textContent = '展开 ' + count + ' 条更早的日常记录';
+  }
+}
+
+function editNote(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.treatmentNotes || !p.treatmentNotes[idx]) return;
+  const note = p.treatmentNotes[idx];
+  const catMap = { daily: '日常', event: '事件', consult: '会诊', procedure: '操作', other: '其他' };
+
+  const body = '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="fEditNoteCat">' +
+    Object.entries(catMap).map(([k,v]) => '<option value="' + k + '"' + (note.category === k ? ' selected' : '') + '>' + v + '</option>').join('') +
+    '</select></div>' +
+    '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="fEditNoteText">' + escHtml(note.note) + '</textarea></div>';
+
+  showModal('编辑诊疗', body, function() {
+    note.category = document.getElementById('fEditNoteCat').value;
+    note.note = document.getElementById('fEditNoteText').value;
+    saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗已更新', 'success');
+  });
+}
+
 function showAddNote(pid) {
-  const body = '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="fNoteCat"><option value="daily">日常记录</option><option value="event">重要事件</option><option value="consult">会诊记录</option><option value="procedure">操作记录</option><option value="other">其他</option></select></div><div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="fNoteText" placeholder="输入诊疗记录..."></textarea></div>';
-  showModal('添加诊疗记录', body, function() {
+  const body = '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="fNoteCat"><option value="daily">日常记录</option><option value="event">重要事件</option><option value="consult">会诊记录</option><option value="procedure">操作记录</option><option value="other">其他</option></select></div><div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="fNoteText" placeholder="输入诊疗内容..."></textarea></div>';
+  showModal('添加诊疗', body, function() {
     const p = getPatient(pid);
     if (!p) return;
     if (!p.treatmentNotes) p.treatmentNotes = [];
     p.treatmentNotes.push({ timestamp: new Date().toISOString(), category: document.getElementById('fNoteCat').value, note: document.getElementById('fNoteText').value });
-    saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗记录已添加', 'success');
+    saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗已添加', 'success');
   });
 }
 
