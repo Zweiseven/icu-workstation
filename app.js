@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.20.1", date:"2026-05-29", changes:[
+    "修复总览48h提醒显示单位错误（h→天）",
+  ]},
   { v:"v2.20", date:"2026-05-29", changes:[
     "移除交班记录模块，精简为核心三模块",
   ]},
@@ -1138,7 +1141,7 @@ function render48hAlerts(alerts) {
         '</div>' +
         '<div class="alert-48h-check check-warn">' +
           '<span class="alert-48h-dot"></span>' +
-          '入住超' + Math.floor(a.hours / 24) + 'h' +
+          '入住超' + Math.floor(a.hours / 24) + '天' +
         '</div>' +
       '</div></div>';
   });
