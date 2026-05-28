@@ -1,7 +1,7 @@
 ﻿// ICU 工作站 Service Worker v2.6
 // 202605290030
 
-const BUILD_VERSION = "202605290130";
+const BUILD_VERSION = "202605290200";
 const CACHE_NAME = "icu-workstation-" + BUILD_VERSION;
 const APP_STATIC = [
   "./styles.css",

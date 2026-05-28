@@ -34,6 +34,11 @@ const OUTCOME_TYPES = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.15", date:"2026-05-29", changes:[
+    "肠内营养简化为是/否选择，未启动需填写原因",
+    "治疗转归自动记录ICU入住是否超48h",
+    "48h评估提醒卡片简化显示",
+  ]},
   { v:"v2.14", date:"2026-05-29", changes:[
     "诊疗记录新增删除功能",
     "入院日期改为入住ICU日期 + 精确到小时分钟(datetime-local)",
@@ -377,7 +382,7 @@ function showAddPatient() {
       primaryDiagnosis: document.getElementById('fNewDiag').value,
       secondaryDiagnoses: document.getElementById('fNewDiag2').value,
       outcome: null,
-      enteralNutrition: { started: false, startDate: '' },
+      enteralNutrition: { started: false, reason: '' },
       vitals: [], labs: [], abgs: [], microbiology: [], antibiotics: [],
       treatmentNotes: [], fluidBalance: [], scores: [],
     };
@@ -416,6 +421,7 @@ function showTerminatePatient(pid) {
       label: ot ? ot.label : outcomeVal,
       date: todayStr(),
       notes: document.getElementById('fTermNote').value,
+      icuOver48h: icuHours(p.admissionDate) > 48,
     };
     saveState();
     closeModal();
@@ -445,8 +451,8 @@ function renderPatientInfo(container, p) {
   const icuH = icuHours(p.admissionDate);
   html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
     '<span style="font-size:0.82rem;color:var(--text-muted)">ICU已住：<strong style="color:' + (icuH > 48 ? 'var(--danger)' : 'var(--text)') + '">' + Math.floor(icuH / 24) + '天' + (icuH % 24) + '小时</strong></span>' +
-    '<span style="font-size:0.82rem;color:var(--text-muted)">肠内营养：<strong style="color:' + (en && en.started ? 'var(--success)' : 'var(--warning)') + '">' + (en && en.started ? '已启动 (' + (en.startDate || '') + ')' : '未启动') + '</strong></span>' +
-    '<button class="btn btn-sm" onclick="markEnteralNutrition(\'' + p.id + '\')" style="font-size:0.72rem;">标记肠内营养</button>' +
+    '<span style="font-size:0.82rem;color:var(--text-muted)">肠内营养：<strong style="color:' + (en && en.started ? 'var(--success)' : 'var(--warning)') + '">' + (en && en.started ? '是' : ('否' + (en && en.reason ? '（' + escHtml(en.reason) + '）' : ''))) + '</strong></span>' +
+    '<button class="btn btn-sm" onclick="toggleEnteralNutrition(\'' + p.id + '\')" style="font-size:0.72rem;">肠内营养</button>' +
   '</div>';
   html += '</div>';
 
@@ -900,6 +906,9 @@ function doOutcomeRender() {
     if (p.outcome && p.outcome.notes) {
       html += '<div class="outcome-card-note">' + escHtml(p.outcome.notes) + '</div>';
     }
+    if (p.outcome && p.outcome.icuOver48h !== undefined) {
+      html += '<div style="font-size:0.75rem;color:' + (p.outcome.icuOver48h ? 'var(--warning)' : 'var(--text-muted)') + ';margin-top:4px;">ICU入住超48h: ' + (p.outcome.icuOver48h ? '是' : '否') + '</div>';
+    }
     if (p.antibiotics && p.antibiotics.length > 0) {
       html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">抗生素: ' + escHtml(p.antibiotics.map(a => a.drug).join(', ')) + '</div>';
     }
@@ -1107,9 +1116,7 @@ function get48hAlerts() {
       patient: p,
       hours: icuHours(p.admissionDate),
       enStarted: p.enteralNutrition && p.enteralNutrition.started,
-      enDate: p.enteralNutrition ? p.enteralNutrition.startDate : '',
-      enWithin48h: p.enteralNutrition && p.enteralNutrition.started && p.enteralNutrition.startDate &&
-        ((p.enteralNutrition.startDate.includes('T') ? new Date(p.enteralNutrition.startDate) : new Date(p.enteralNutrition.startDate + 'T00:00:00')) - (p.admissionDate.includes('T') ? new Date(p.admissionDate) : new Date(p.admissionDate + 'T00:00:00'))) / 3600000 <= 48,
+      enReason: (p.enteralNutrition && p.enteralNutrition.reason) || '',
     }));
 }
 
@@ -1122,7 +1129,7 @@ function render48hAlerts(alerts) {
       '<div class="alert-48h-checks">' +
         '<div class="alert-48h-check' + (a.enStarted ? ' check-ok' : ' check-fail') + '">' +
           '<span class="alert-48h-dot"></span>' +
-          '肠内营养' + (a.enStarted ? (a.enWithin48h ? ' (48h内已启动)' : ' (已启动)') : ' 未启动') +
+          '肠内营养: ' + (a.enStarted ? '已启动' : ('未启动' + (a.enReason ? ' — ' + escHtml(a.enReason.substring(0,30)) : ''))) +
         '</div>' +
         '<div class="alert-48h-check check-warn">' +
           '<span class="alert-48h-dot"></span>' +
@@ -1134,17 +1141,17 @@ function render48hAlerts(alerts) {
   return html;
 }
 
-function markEnteralNutrition(pid) {
+function toggleEnteralNutrition(pid) {
   const p = getPatient(pid);
   if (!p) return;
-  if (!p.enteralNutrition) p.enteralNutrition = { started: false, startDate: '' };
-  const body = '<div class="form-group"><label class="form-label">肠内营养启动日期</label><input class="form-input" id="fENDate" type="date" value="' + (p.enteralNutrition.startDate || todayStr()) + '"></div>' +
-    '<p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">标记肠内营养已启动。超48h未启动会在仪表盘提醒。</p>';
-  showModal('肠内营养 — ' + escHtml(p.name), body, function() {
-    p.enteralNutrition.started = true;
-    p.enteralNutrition.startDate = document.getElementById('fENDate').value;
+  if (!p.enteralNutrition) p.enteralNutrition = { started: false, reason: '' };
+  const body = '<div class="form-group"><label class="form-label">是否已启动肠内营养</label><select class="form-select" id="fENStarted" onchange="var r=document.getElementById(\'enReasonRow\');r.style.display=this.value===\'false\'?\'block\':\'none\'"><option value="true"' + (p.enteralNutrition.started ? ' selected' : '') + '>是，已启动</option><option value="false"' + (!p.enteralNutrition.started ? ' selected' : '') + '>否，未启动</option></select></div>' +
+    '<div class="form-group" id="enReasonRow" style="display:' + (p.enteralNutrition.started ? 'none' : 'block') + ';"><label class="form-label">未启动原因</label><textarea class="form-textarea" id="fENReason" placeholder="血流动力学不稳定、腹腔高压、肠梗阻...">' + escHtml(p.enteralNutrition.reason || '') + '</textarea></div>';
+  showModal('肠内营养评估 — ' + escHtml(p.name), body, function() {
+    p.enteralNutrition.started = document.getElementById('fENStarted').value === 'true';
+    p.enteralNutrition.reason = p.enteralNutrition.started ? '' : (document.getElementById('fENReason').value || '');
     saveState(); closeModal(); renderPatientSubTab('info');
-    toast('肠内营养已标记', 'success');
+    toast('肠内营养已更新', 'success');
   });
 }
 
