@@ -1180,55 +1180,58 @@ async function smartExport() {
     patients: state.patients,
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
-  const fileName = 'ICU工作站_备份_' + todayStr() + '.json';
+
+  // 始终使用 icu_data.json 作为文件名——与电脑端自动同步的文件完全一致
+  // 上传到同一 OneDrive 文件夹后覆盖原文件，电脑端就会自动读取
+  const syncFileName = 'icu_data.json';
 
   // 尝试 Web Share（部分手机有效）
   const blob = new Blob([jsonStr], { type: 'text/plain' });
-  const file = new File([blob], 'icu_data_' + todayStr() + '.json', { type: 'text/plain' });
+  const file = new File([blob], syncFileName, { type: 'text/plain' });
   let cloudShared = false;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'ICU 工作站数据备份' });
+      await navigator.share({ files: [file], title: 'ICU 数据同步 — 覆盖 icu_data.json' });
       cloudShared = true;
     } catch(e) {}
   }
 
-  // 下载文件（手机保底方案）
+  // 下载文件
   const dlBlob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(dlBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = fileName;
+  a.download = syncFileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
   if (cloudShared) {
-    toast('已发送。如未成功同步，文件也已保存到下载文件夹。', 'success');
+    toast('已发送。如未成功，文件也已下载（' + syncFileName + '）。', 'success');
   } else if (supportsCloudSync()) {
     toast('数据已导出', 'success');
   } else {
-    // 手机端：给清晰的上传指引
-    showMobileUploadGuide(fileName);
+    showMobileUploadGuide(syncFileName);
   }
-}
-
-function showMobileUploadGuide(fileName) {
+}function showMobileUploadGuide(fileName) {
   var body = '<div style="text-align:center;padding:8px 0;">' +
-    '<div style="font-size:2rem;margin-bottom:8px;">📤</div>' +
-    '<p style="font-weight:600;margin-bottom:12px;">文件已保存到下载文件夹</p>' +
+    '<div style="font-size:2rem;margin-bottom:8px;">🔄</div>' +
+    '<p style="font-weight:600;margin-bottom:4px;">文件已下载：<code style="background:var(--primary-light);padding:2px 8px;border-radius:4px;">' + escHtml(fileName) + '</code></p>' +
+    '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">与电脑端自动同步的是同一个文件</p>' +
     '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:14px;text-align:left;font-size:0.82rem;color:var(--text-secondary);line-height:2;">' +
-      '<strong>上传到 OneDrive：</strong><br>' +
-      '① 打开手机上的 <strong>OneDrive App</strong><br>' +
-      '② 点右下角 <strong>+</strong> → <strong>上传</strong><br>' +
-      '③ 选择 <strong>下载</strong> 文件夹<br>' +
+      '<strong>上传到 OneDrive 实现同步：</strong><br>' +
+      '① 打开 <strong>OneDrive App</strong><br>' +
+      '② 进入与电脑同步的 <strong>同一文件夹</strong><br>' +
+      '③ 点 <strong>+ → 上传</strong>，选下载文件夹<br>' +
       '④ 找到 <strong>' + escHtml(fileName) + '</strong><br>' +
-      '⑤ 上传到 OneDrive 中与电脑同步的文件夹' +
+      '⑤ 如提示「已存在同名文件」，选 <strong>替换/覆盖</strong><br>' +
+      '⑥ 电脑端会自动检测到更新并读取' +
     '</div>' +
-    '<p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;">上传后，电脑端如已启用云同步会自动读取。<br>也可在电脑端点「数据同步」→「从文件导入」手动导入。</p>' +
+    '<p style="font-size:0.73rem;color:var(--text-muted);margin-top:10px;">' +
+      '文件名固定为 icu_data.json，与电脑端完全一致。<br>每次上传覆盖后，电脑会自动同步最新数据。</p>' +
   '</div>';
-  showModal('上传到云盘', body, function() { closeModal(); });
+  showModal('同步到 OneDrive', body, function() { closeModal(); });
   setTimeout(function() {
     var saveBtn = document.getElementById('modalSaveBtn');
     if (saveBtn) saveBtn.textContent = '知道了';
