@@ -1180,8 +1180,8 @@ async function smartExport() {
     patients: state.patients,
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const file = new File([blob], 'icu_data_' + todayStr() + '.json', { type: 'application/json' });
+  const blob = new Blob([jsonStr], { type: 'text/plain' });
+  const file = new File([blob], 'icu_data_' + todayStr() + '.json', { type: 'text/plain' });
 
   // 手机端：Web Share API → 直接分享到云盘 App
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
