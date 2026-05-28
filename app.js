@@ -1240,7 +1240,8 @@ function showSyncPanel() {
       '<p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">选择云盘同步文件夹，之后每次修改自动保存 icu_data.json。请确认云盘客户端正在运行且同步状态正常。</p>' +
       '</div>';
 
-    body += '<button class="btn btn-primary" id="btnStartCloudSync" style="width:100%;margin-bottom:10px;justify-content:center;">选择云盘同步文件夹</button>';
+    body += '<button class="btn btn-primary" id="btnStartCloudSync" style="width:100%;margin-bottom:8px;justify-content:center;">选择云盘同步文件夹</button>';
+    body += '<button class="btn btn-sm" id="btnSyncFromCloud" style="width:100%;margin-bottom:10px;justify-content:center;">从云盘同步最新数据</button>';
     body += '<div id="syncPanelStatus" style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-bottom:4px;"></div>';
   }
 
@@ -1277,7 +1278,9 @@ function showSyncPanel() {
     if (!hasCloudSync) return;
     const statusEl = document.getElementById('syncPanelStatus');
     const btnEl = document.getElementById('btnStartCloudSync');
+    const syncBtn2 = document.getElementById('btnSyncFromCloud');
     if (!statusEl || !btnEl) return;
+    if (syncBtn2) syncBtn2.style.display = 'block';
     try {
       const h = await getFileHandle();
       if (h) {
@@ -1291,12 +1294,41 @@ function showSyncPanel() {
   setTimeout(() => {
     const btn = document.getElementById('btnStartCloudSync');
     if (btn) btn.onclick = startCloudSync;
+    const syncBtn = document.getElementById('btnSyncFromCloud');
+    if (syncBtn) syncBtn.onclick = syncFromCloud;
   }, 100);
 
   setTimeout(() => {
     const saveBtn = document.getElementById('modalSaveBtn');
     if (saveBtn) saveBtn.textContent = '关闭';
   }, 50);
+}
+
+// 从云盘同步最新数据
+async function syncFromCloud() {
+  const btn = document.getElementById('btnSyncFromCloud');
+  if (btn) { btn.textContent = '同步中...'; btn.disabled = true; }
+  try {
+    const h = await getFileHandle();
+    if (!h) { toast('未启用云同步，请先选择同步文件夹', 'error'); if (btn) { btn.textContent = '从云盘同步最新数据'; btn.disabled = false; } return; }
+    const fileHandle = await getSyncFileHandle(h);
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    const imported = JSON.parse(text);
+    if (imported.patients && Array.isArray(imported.patients)) {
+      const backupKey = 'icu_workstation_v2_backup_' + todayStr();
+      localStorage.setItem(backupKey, JSON.stringify(state));
+      state.patients = imported.patients;
+      saveState();
+      render();
+      toast('已从云盘同步 ' + imported.patients.length + ' 位患者记录', 'success');
+    } else {
+      toast('云盘数据格式异常', 'error');
+    }
+  } catch(e) {
+    toast('同步失败: ' + e.message, 'error');
+  }
+  if (btn) { btn.textContent = '从云盘同步最新数据'; btn.disabled = false; }
 }
 
 // 启动云同步：选择文件夹而非单个文件（目录级访问更可靠）
