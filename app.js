@@ -53,6 +53,10 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.24", date:"2026-05-29", changes:[
+    "移除总览独立48h提醒区，入住时长直接标在卡片ICU日期旁",
+    "患者详情自动按床位号打开首位患者，取消选择步骤",
+  ]},
   { v:"v2.23.1", date:"2026-05-29", changes:[
     "修复总览下一步计划预览文字截断问题",
   ]},
@@ -334,11 +338,6 @@ function renderDashboard(main) {
     '<div class="stat-card"><div class="stat-value">' + terminatedPatients.length + '</div><div class="stat-label">已转归</div></div>' +
   '</div>';
 
-  const alerts48h = get48hAlerts();
-  if (alerts48h.length > 0) {
-    html += render48hAlerts(alerts48h);
-  }
-
   html += '<div class="dashboard-grid">';
 
   // 在科患者卡片
@@ -396,7 +395,10 @@ function buildPatientCard(p) {
     card += '<div class="patient-info-row"><span>主诊断</span><em style="color:var(--text-muted)">未录入</em></div>';
   }
   if (p.age) card += '<div class="patient-info-row"><span>年龄/性别</span><strong>' + escHtml(p.age) + '岁 / ' + escHtml(p.gender || '—') + '</strong></div>';
-  card += '<div class="patient-info-row"><span>ICU日期</span><strong>' + escHtml(fmtDate(p.admissionDate) || '—') + '</strong></div>';
+  card += '<div class="patient-info-row"><span>ICU日期</span><strong>' + escHtml(fmtDate(p.admissionDate) || '—') + '</strong>';
+  var icuH = icuHours(p.admissionDate);
+  if (icuH > 48) card += ' <span style="font-size:0.7rem;color:var(--text-muted);">(' + Math.floor(icuH/24) + '天' + (icuH%24) + 'h)</span>';
+  card += '</div>';
 
   if (latestVitals) {
     card += '<div style="margin-top:8px;font-size:0.8rem;color:var(--text-secondary);display:flex;gap:12px;flex-wrap:wrap;">';
@@ -629,16 +631,15 @@ function interpretABG(a) {
 function renderPatientDetail(main) {
   const p = getCurrentPatient();
   if (!p) {
-    const activePatients = state.patients.filter(pt => !pt.outcome);
-    let html = '<div class="page-header"><h1 class="page-title">患者详情</h1></div>';
+    const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) {
+      return (a.bed || '').localeCompare(b.bed || '');
+    });
     if (activePatients.length > 0) {
-      html += '<div class="patient-selector">';
-      activePatients.forEach(pat => {
-        html += '<button class="patient-chip" onclick="openPatient(\'' + pat.id + '\')">' + escHtml(pat.name || '未命名') + ' (' + escHtml(pat.bed) + ')</button>';
-      });
-      html += '</div>';
+      // 直接展示第一个患者
+      openPatient(activePatients[0].id);
+      return;
     }
-    html += '<div class="empty-state"><p>请选择一位在科患者查看详情</p></div>';
+    let html = '<div class="page-header"><h1 class="page-title">患者详情</h1></div><div class="empty-state"><p>暂无在科患者</p></div>';
     main.innerHTML = html;
     return;
   }
