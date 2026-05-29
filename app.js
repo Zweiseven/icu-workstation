@@ -53,6 +53,10 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.21", date:"2026-05-29", changes:[
+    "新增患者待办事项卡片：添加/完成/删除",
+    "待办完成自动划线置底，未完成置顶",
+  ]},
   { v:"v2.20.1", date:"2026-05-29", changes:[
     "修复总览48h提醒显示单位错误（h→天）",
   ]},
@@ -429,7 +433,7 @@ function showAddPatient() {
       outcome: null,
       enteralNutrition: { started: false, reason: '' },
       vitals: [], labs: [], abgs: [], microbiology: [], antibiotics: [],
-      treatmentNotes: [], fluidBalance: [], scores: [],
+      treatmentNotes: [], tasks: [], fluidBalance: [], scores: [],
     };
     state.patients.push(p);
     saveState();
@@ -547,6 +551,10 @@ function renderPatientInfo(container, p) {
   } else {
     html += '<div class="empty-state"><p>暂无诊疗</p></div>';
   }
+  html += '</div>';
+
+  html += '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">待办事项</span><button class="btn btn-sm btn-primary" onclick="showAddTask(\'' + p.id + '\')">+ 添加</button></div>';
+  html += renderTasks(p);
   html += '</div>';
 
   html += '<div class="card"><div class="card-header"><span class="card-title">最近记录</span><div style="display:flex;gap:8px;"><button class="btn btn-sm" onclick="showAddVitals(\'' + p.id + '\')">+ 生命体征</button><button class="btn btn-sm" onclick="showAddABG(\'' + p.id + '\')">+ 血气分析</button></div></div>';
@@ -1055,6 +1063,55 @@ function deleteNote(pid, idx) {
     saveState(); closeModal(); renderPatientSubTab('info'); toast('诊疗已删除', 'success');
   });
 }
+
+// --- 待办事项 ---
+function renderTasks(p) {
+  if (!p.tasks) p.tasks = [];
+  const incomplete = p.tasks.filter(function(t) { return !t.done; });
+  const completed = p.tasks.filter(function(t) { return t.done; });
+  let html = '';
+  if (p.tasks.length === 0) {
+    html += '<div class="empty-state"><p>暂无待办</p></div>';
+  } else {
+    incomplete.forEach(function(t, i) {
+      const idx = p.tasks.indexOf(t);
+      html += '<div class="task-item"><label class="task-label" onclick="toggleTask(\'' + p.id + '\', ' + idx + ')"><input type="checkbox" onchange="toggleTask(\'' + p.id + '\', ' + idx + ')"> <span>' + escHtml(t.text) + '</span></label><button class="task-delete" onclick="deleteTask(\'' + p.id + '\', ' + idx + ')" title="删除">×</button></div>';
+    });
+    if (completed.length > 0) {
+      html += '<div style="border-top:1px dashed var(--border);margin:8px 0;padding-top:4px;"></div>';
+      completed.forEach(function(t, i) {
+        const idx = p.tasks.indexOf(t);
+        html += '<div class="task-item task-done"><label class="task-label" onclick="toggleTask(\'' + p.id + '\', ' + idx + ')"><input type="checkbox" checked onchange="toggleTask(\'' + p.id + '\', ' + idx + ')"> <span>' + escHtml(t.text) + '</span></label><button class="task-delete" onclick="deleteTask(\'' + p.id + '\', ' + idx + ')" title="删除">×</button></div>';
+      });
+    }
+  }
+  return html;
+}
+
+function showAddTask(pid) {
+  showModal('添加待办', '<div class="form-group"><label class="form-label">待办内容</label><textarea class="form-textarea" id="fTaskText" placeholder="输入待办事项..."></textarea></div>', function() {
+    const p = getPatient(pid);
+    if (!p) return;
+    if (!p.tasks) p.tasks = [];
+    p.tasks.push({ text: document.getElementById('fTaskText').value, done: false, createdAt: new Date().toISOString() });
+    saveState(); closeModal(); renderPatientSubTab('info'); toast('待办已添加', 'success');
+  });
+}
+
+function toggleTask(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.tasks || !p.tasks[idx]) return;
+  p.tasks[idx].done = !p.tasks[idx].done;
+  saveState(); renderPatientSubTab('info');
+}
+
+function deleteTask(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.tasks || !p.tasks[idx]) return;
+  p.tasks.splice(idx, 1);
+  saveState(); renderPatientSubTab('info'); toast('待办已删除', 'success');
+}
+
 
 function showAddNote(pid) {
   const body = '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="fNoteCat"><option value="daily">日常</option><option value="event">事件</option><option value="change">病情变化</option><option value="plan">下一步计划</option></select></div><div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="fNoteText" placeholder="输入诊疗内容..."></textarea></div>';
