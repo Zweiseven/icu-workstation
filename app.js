@@ -53,6 +53,11 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.22", date:"2026-05-29", changes:[
+    "抗生素使用追踪支持编辑和删除",
+    "移除待办事项模块，下一步计划替代（总览可见）",
+    "诊疗记录按日期升序排列，同日计划/事件优先",
+  ]},
   { v:"v2.21.1", date:"2026-05-29", changes:[
     "病区总览卡片新增待办事项概览（未完成数+预览）",
   ]},
@@ -401,17 +406,15 @@ function buildPatientCard(p) {
   if (latestMicro) card += '<span>病原学: ' + escHtml(latestMicro.organism || '待报') + '</span>';
   if (activeAbx.length > 0) card += '<span>抗感染: ' + activeAbx.length + ' 种</span>';
   card += '</div>';
-  // 待办事项概览
-  if (p.tasks && p.tasks.length > 0) {
-    var incomplete = p.tasks.filter(function(t) { return !t.done; });
-    var done = p.tasks.length - incomplete.length;
-    card += '<div class="patient-card-tasks">';
-    if (incomplete.length > 0) {
-      card += '<span class="task-badge task-badge-pending">' + incomplete.length + ' 待办</span>';
-      card += '<span class="task-preview">' + escHtml(incomplete.slice(0,2).map(function(t){return t.text;}).join(' / ')) + (incomplete.length > 2 ? '...' : '') + '</span>';
+  // 下一步计划概览
+  if (p.treatmentNotes && p.treatmentNotes.length > 0) {
+    var plans = p.treatmentNotes.filter(function(n) { return n.category === 'plan'; });
+    if (plans.length > 0) {
+      card += '<div class="patient-card-tasks">';
+      card += '<span class="task-badge task-badge-pending">' + plans.length + ' 下一步计划</span>';
+      card += '<span class="task-preview">' + escHtml(plans.slice(0,2).map(function(n){return n.note;}).join(' / ')) + (plans.length > 2 ? '...' : '') + '</span>';
+      card += '</div>';
     }
-    if (done > 0) card += '<span class="task-badge task-badge-done">' + done + ' 已完成</span>';
-    card += '</div>';
   }
   card += '</div>';
   return card;
@@ -449,7 +452,7 @@ function showAddPatient() {
       outcome: null,
       enteralNutrition: { started: false, reason: '' },
       vitals: [], labs: [], abgs: [], microbiology: [], antibiotics: [],
-      treatmentNotes: [], tasks: [], fluidBalance: [], scores: [],
+      treatmentNotes: [], fluidBalance: [], scores: [],
     };
     state.patients.push(p);
     saveState();
@@ -569,10 +572,6 @@ function renderPatientInfo(container, p) {
   }
   html += '</div>';
 
-  html += '<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">待办事项</span><button class="btn btn-sm btn-primary" onclick="showAddTask(\'' + p.id + '\')">+ 添加</button></div>';
-  html += renderTasks(p);
-  html += '</div>';
-
   html += '<div class="card"><div class="card-header"><span class="card-title">最近记录</span><div style="display:flex;gap:8px;"><button class="btn btn-sm" onclick="showAddVitals(\'' + p.id + '\')">+ 生命体征</button><button class="btn btn-sm" onclick="showAddABG(\'' + p.id + '\')">+ 血气分析</button></div></div>';
 
   if (p.abgs && p.abgs.length > 0) {
@@ -688,7 +687,7 @@ function renderPatientMicro(container, p) {
 
   if (p.antibiotics && p.antibiotics.length > 0) {
     html += '<table class="data-table"><thead><tr><th>药物</th><th>开始日期</th><th>停药日期</th><th>剂量</th><th>途径</th><th>天数</th><th>状态</th></tr></thead><tbody>';
-    p.antibiotics.forEach(a => {
+    p.antibiotics.forEach((a, idx) => {
       const startDate = a.startDate ? new Date(a.startDate) : null;
       const endDate = a.endDate ? new Date(a.endDate) : null;
       const days = startDate ? Math.floor(((endDate || new Date()) - startDate) / 86400000) : 0;
@@ -696,7 +695,7 @@ function renderPatientMicro(container, p) {
       if (endDate) { abxClass = 'abx-ok'; statusText = '已停用'; }
       else if (days >= 10) { abxClass = 'abx-review'; statusText = '需评估!'; }
       else if (days >= 7) { abxClass = 'abx-warn'; statusText = '关注'; }
-      html += '<tr><td><strong>' + escHtml(a.drug) + '</strong></td><td>' + escHtml(a.startDate || '—') + '</td><td>' + escHtml(a.endDate || '—') + '</td><td>' + escHtml(a.dose || '—') + '</td><td>' + escHtml(a.route || '—') + '</td><td><span class="abx-days-badge ' + abxClass + '">' + days + '天</span></td><td><span style="font-size:0.75rem;">' + statusText + '</span></td></tr>';
+      html += '<tr><td><strong>' + escHtml(a.drug) + '</strong></td><td>' + escHtml(a.startDate || '—') + '</td><td>' + escHtml(a.endDate || '—') + '</td><td>' + escHtml(a.dose || '—') + '</td><td>' + escHtml(a.route || '—') + '</td><td><span class="abx-days-badge ' + abxClass + '">' + days + '天</span></td><td><span style="font-size:0.75rem;">' + statusText + '</span> <button class="btn btn-sm" onclick="editAntibiotic(\'' + p.id + '\', ' + idx + ')" style="font-size:0.65rem;padding:0 6px;">编辑</button></td></tr>';
     });
     html += '</tbody></table>';
   } else {
@@ -989,7 +988,14 @@ function renderNoteBadge(cat, label) {
 }
 
 function renderTreatmentNotes(p) {
-  const notes = [...p.treatmentNotes].reverse();
+  // 按时间升序，同日 plan/event 优先
+  var catOrder = { plan: 0, event: 1, change: 2, daily: 3 };
+  var notes = [...p.treatmentNotes].sort(function(a, b) {
+    var da = (a.timestamp || '').substring(0, 10);
+    var db = (b.timestamp || '').substring(0, 10);
+    if (da !== db) return da.localeCompare(db);
+    return (catOrder[a.category] || 9) - (catOrder[b.category] || 9);
+  });
   const dailyNotes = notes.filter(n => n.category === 'daily');
   const otherNotes = notes.filter(n => n.category !== 'daily');
   let html = '';
@@ -1080,54 +1086,6 @@ function deleteNote(pid, idx) {
   });
 }
 
-// --- 待办事项 ---
-function renderTasks(p) {
-  if (!p.tasks) p.tasks = [];
-  const incomplete = p.tasks.filter(function(t) { return !t.done; });
-  const completed = p.tasks.filter(function(t) { return t.done; });
-  let html = '';
-  if (p.tasks.length === 0) {
-    html += '<div class="empty-state"><p>暂无待办</p></div>';
-  } else {
-    incomplete.forEach(function(t, i) {
-      const idx = p.tasks.indexOf(t);
-      html += '<div class="task-item"><label class="task-label" onclick="toggleTask(\'' + p.id + '\', ' + idx + ')"><input type="checkbox" onchange="toggleTask(\'' + p.id + '\', ' + idx + ')"> <span>' + escHtml(t.text) + '</span></label><button class="task-delete" onclick="deleteTask(\'' + p.id + '\', ' + idx + ')" title="删除">×</button></div>';
-    });
-    if (completed.length > 0) {
-      html += '<div style="border-top:1px dashed var(--border);margin:8px 0;padding-top:4px;"></div>';
-      completed.forEach(function(t, i) {
-        const idx = p.tasks.indexOf(t);
-        html += '<div class="task-item task-done"><label class="task-label" onclick="toggleTask(\'' + p.id + '\', ' + idx + ')"><input type="checkbox" checked onchange="toggleTask(\'' + p.id + '\', ' + idx + ')"> <span>' + escHtml(t.text) + '</span></label><button class="task-delete" onclick="deleteTask(\'' + p.id + '\', ' + idx + ')" title="删除">×</button></div>';
-      });
-    }
-  }
-  return html;
-}
-
-function showAddTask(pid) {
-  showModal('添加待办', '<div class="form-group"><label class="form-label">待办内容</label><textarea class="form-textarea" id="fTaskText" placeholder="输入待办事项..."></textarea></div>', function() {
-    const p = getPatient(pid);
-    if (!p) return;
-    if (!p.tasks) p.tasks = [];
-    p.tasks.push({ text: document.getElementById('fTaskText').value, done: false, createdAt: new Date().toISOString() });
-    saveState(); closeModal(); renderPatientSubTab('info'); toast('待办已添加', 'success');
-  });
-}
-
-function toggleTask(pid, idx) {
-  const p = getPatient(pid);
-  if (!p || !p.tasks || !p.tasks[idx]) return;
-  p.tasks[idx].done = !p.tasks[idx].done;
-  saveState(); renderPatientSubTab('info');
-}
-
-function deleteTask(pid, idx) {
-  const p = getPatient(pid);
-  if (!p || !p.tasks || !p.tasks[idx]) return;
-  p.tasks.splice(idx, 1);
-  saveState(); renderPatientSubTab('info'); toast('待办已删除', 'success');
-}
-
 
 function showAddNote(pid) {
   const body = '<div class="form-group"><label class="form-label">类别</label><select class="form-select" id="fNoteCat"><option value="daily">日常</option><option value="event">事件</option><option value="change">病情变化</option><option value="plan">下一步计划</option></select></div><div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="fNoteText" placeholder="输入诊疗内容..."></textarea></div>';
@@ -1181,6 +1139,29 @@ function showAddAntibiotic(pid) {
     saveState(); closeModal(); renderPatientSubTab('micro'); toast('抗生素已添加', 'success');
   });
 }
+function editAntibiotic(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.antibiotics || !p.antibiotics[idx]) return;
+  const a = p.antibiotics[idx];
+  const body = '<div class="form-row"><div class="form-group"><label class="form-label">药物名称</label><input class="form-input" id="fADrug" value="' + escHtml(a.drug || '') + '"></div><div class="form-group"><label class="form-label">给药途径</label><select class="form-select" id="fARoute"><option value="IV"' + (a.route === 'IV' ? ' selected' : '') + '>IV</option><option value="PO"' + (a.route === 'PO' ? ' selected' : '') + '>PO</option><option value="NG"' + (a.route === 'NG' ? ' selected' : '') + '>NG</option></select></div></div><div class="form-row-3"><div class="form-group"><label class="form-label">开始日期</label><input class="form-input" id="fAStart" type="date" value="' + escHtml(a.startDate || '') + '"></div><div class="form-group"><label class="form-label">停药日期（留空=进行中）</label><input class="form-input" id="fAEnd" type="date" value="' + escHtml(a.endDate || '') + '"></div><div class="form-group"><label class="form-label">剂量/频次</label><input class="form-input" id="fADose" value="' + escHtml(a.dose || '') + '"></div></div><div style="margin-top:8px;"><button class="btn btn-sm btn-danger" id="btnDelAbx" type="button">删除此抗生素</button></div>';
+  showModal('编辑抗生素', body, function() {
+    a.drug = document.getElementById('fADrug').value;
+    a.route = document.getElementById('fARoute').value;
+    a.startDate = document.getElementById('fAStart').value;
+    a.endDate = document.getElementById('fAEnd').value || null;
+    a.dose = document.getElementById('fADose').value;
+    saveState(); closeModal(); renderPatientSubTab('micro'); toast('抗生素已更新', 'success');
+  });
+  setTimeout(function() {
+    var delBtn = document.getElementById('btnDelAbx');
+    if (delBtn) delBtn.onclick = function() {
+      p.antibiotics.splice(idx, 1);
+      saveState(); closeModal(); renderPatientSubTab('micro'); toast('抗生素已删除', 'success');
+    };
+    var saveBtn = document.getElementById('modalSaveBtn');
+  }, 50);
+}
+
 
 // ICU入住超48h检测
 function icuHours(admissionDate) {
