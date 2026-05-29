@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.24.1", date:"2026-05-29", changes:[
+    "患者详情切换条按床位号排序+显示床位号",
+  ]},
   { v:"v2.24", date:"2026-05-29", changes:[
     "移除总览独立48h提醒区，入住时长直接标在卡片ICU日期旁",
     "患者详情自动按床位号打开首位患者，取消选择步骤",
@@ -654,11 +657,13 @@ function renderPatientDetail(main) {
   if (!terminated) html += '<button class="btn btn-sm btn-danger" onclick="showTerminatePatient(\'' + p.id + '\')">结束治疗</button>';
   html += '</div></div>';
 
-  const activePatients = state.patients.filter(pt => !pt.outcome);
+  const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) {
+    return (a.bed || '').localeCompare(b.bed || '');
+  });
   if (activePatients.length > 0) {
     html += '<div class="patient-selector">';
     activePatients.forEach(pat => {
-      html += '<button class="patient-chip' + (pat.id === p.id ? ' active' : '') + '" onclick="openPatient(\'' + pat.id + '\')">' + escHtml(pat.name || '未命名') + '</button>';
+      html += '<button class="patient-chip' + (pat.id === p.id ? ' active' : '') + '" onclick="openPatient(\'' + pat.id + '\')">' + escHtml(pat.name || '未命名') + ' (' + escHtml(pat.bed) + ')</button>';
     });
     html += '</div>';
   }

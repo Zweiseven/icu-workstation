@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
 <title>ICU 工作站 — 重症医学科患者管理系统</title>
-<link rel="stylesheet" href="styles.css?v=202605290800">
+<link rel="stylesheet" href="styles.css?v=202605290815">
 </head>
 <body>
 
@@ -43,10 +43,10 @@
     <button class="btn btn-sm btn-primary" onclick="showSyncPanel()" style="width:100%;margin-bottom:4px;justify-content:center;font-size:0.8rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>数据同步</button>
     <span class="footer-badge" id="syncStatus">本地运行 · 数据不上传</span>
     <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">检查更新</button>
-    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="查看更新日志">v2.24</span>
+    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="查看更新日志">v2.24.1</span>
   </div>
   <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
-  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="更新日志">v2.24</span><button class="mini-update-btn" onclick="showSyncPanel()" title="数据同步"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
+  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="更新日志">v2.24.1</span><button class="mini-update-btn" onclick="showSyncPanel()" title="数据同步"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="检查更新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
 </aside>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -62,7 +62,7 @@
 <!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="app.js?v=202605290800"></script>
+<script src="app.js?v=202605290815"></script>
 
 
 
@@ -70,7 +70,7 @@
 
 <script>
 // ICU 工作站 v2.6 — 定期轮询 + 更新通知横幅
-const APP_VERSION = '202605290800';
+const APP_VERSION = '202605290815';
 
 (async function bootstrap() {
   if (!('serviceWorker' in navigator)) return;
