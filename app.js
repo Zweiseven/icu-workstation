@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    ICU 工作站 v2.0 — 重症医学科患者管理系统
    主应用逻辑
    ============================================ */
@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.24.2", date:"2026-05-29", changes:[
+    "患者详情切换条和病区总览卡片按床位号数字排序（修复字符串排序导致37排在8前面的问题）",
+  ]},
   { v:"v2.24.1", date:"2026-05-29", changes:[
     "患者详情切换条按床位号排序+显示床位号",
   ]},
@@ -321,7 +324,7 @@ function newPatientId() {
 //  1. 病区总览 (Dashboard)
 // ============================================
 function renderDashboard(main) {
-  const activePatients = state.patients.filter(p => !p.outcome);
+  const activePatients = state.patients.filter(p => !p.outcome).sort(function(a, b) { var na = parseInt(a.bed, 10), nb = parseInt(b.bed, 10); if (!isNaN(na) && !isNaN(nb)) return na - nb; if (!isNaN(na)) return -1; if (!isNaN(nb)) return 1; return (a.bed || '').localeCompare(b.bed || ''); });
   const terminatedPatients = state.patients.filter(p => p.outcome);
   let abxAlerts = 0;
   activePatients.forEach(p => {
@@ -634,9 +637,7 @@ function interpretABG(a) {
 function renderPatientDetail(main) {
   const p = getCurrentPatient();
   if (!p) {
-    const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) {
-      return (a.bed || '').localeCompare(b.bed || '');
-    });
+    const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) { var na = parseInt(a.bed, 10), nb = parseInt(b.bed, 10); if (!isNaN(na) && !isNaN(nb)) return na - nb; if (!isNaN(na)) return -1; if (!isNaN(nb)) return 1; return (a.bed || '').localeCompare(b.bed || ''); });
     if (activePatients.length > 0) {
       // 直接展示第一个患者
       openPatient(activePatients[0].id);
@@ -657,9 +658,7 @@ function renderPatientDetail(main) {
   if (!terminated) html += '<button class="btn btn-sm btn-danger" onclick="showTerminatePatient(\'' + p.id + '\')">结束治疗</button>';
   html += '</div></div>';
 
-  const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) {
-    return (a.bed || '').localeCompare(b.bed || '');
-  });
+  const activePatients = state.patients.filter(pt => !pt.outcome).sort(function(a, b) { var na = parseInt(a.bed, 10), nb = parseInt(b.bed, 10); if (!isNaN(na) && !isNaN(nb)) return na - nb; if (!isNaN(na)) return -1; if (!isNaN(nb)) return 1; return (a.bed || '').localeCompare(b.bed || ''); });
   if (activePatients.length > 0) {
     html += '<div class="patient-selector">';
     activePatients.forEach(pat => {
@@ -1512,7 +1511,7 @@ async function smartExport() {
 
 function showMobileUploadGuide(fileName) {
   var body = '<div style="text-align:center;padding:8px 0;">' +
-    '<div style="font-size:2rem;margin-bottom:8px;">🔄</div>' +
+    '<div style="font-size:2rem;margin-bottom:8px;">??</div>' +
     '<p style="font-weight:600;margin-bottom:4px;">文件已下载：<code style="background:var(--primary-light);padding:2px 8px;border-radius:4px;">' + escHtml(fileName) + '</code></p>' +
     '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">与电脑端自动同步的是同一个文件</p>' +
     '<div style="background:var(--surface-alt);border-radius:var(--radius);padding:14px;text-align:left;font-size:0.82rem;color:var(--text-secondary);line-height:2;">' +
@@ -1587,7 +1586,7 @@ function showSyncPanel() {
     try {
       const h = await getFileHandle();
       if (h) {
-        statusEl.textContent = '✓ 云同步已启用 — 每次修改自动保存';
+        statusEl.textContent = '? 云同步已启用 — 每次修改自动保存';
         statusEl.style.color = 'var(--success)';
         btnEl.textContent = '重新选择同步文件夹';
       }
