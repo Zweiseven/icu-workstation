@@ -1,62 +1,62 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="ICU¹¤×÷Õ¾">
+  <meta name="apple-mobile-web-app-title" content="ICUå·¥ä½œç«™">
   <meta name="theme-color" content="#0d1b2a">
-  <meta name="description" content="ÖØÖ¢Ò½Ñ§¿Æ»¼Õß¹ÜÀíÏµÍ³">
+  <meta name="description" content="é‡ç—‡åŒ»å­¦ç§‘æ‚£è€…ç®¡ç†ç³»ç»Ÿ">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-<title>ICU ¹¤×÷Õ¾ ¡ª ÖØÖ¢Ò½Ñ§¿Æ»¼Õß¹ÜÀíÏµÍ³</title>
+<title>ICU å·¥ä½œç«™ â€” é‡ç—‡åŒ»å­¦ç§‘æ‚£è€…ç®¡ç†ç³»ç»Ÿ</title>
 <link rel="stylesheet" href="styles.css?v=202605292330">
 </head>
 <body>
 
-<!-- ²à±ßÀ¸ -->
+<!-- ä¾§è¾¹æ  -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="logo-icon">ICU</div>
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="²Ëµ¥"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="èœå•"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
     <div class="logo-text">
-      <span class="logo-title">ÖØÖ¢¹¤×÷Õ¾</span>
+      <span class="logo-title">é‡ç—‡å·¥ä½œç«™</span>
       <span class="logo-sub">Intensive Care Unit</span>
     </div>
   </div>
   <nav class="sidebar-nav" id="sidebarNav">
     <button class="nav-item active" data-view="dashboard">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      <span>²¡Çø×ÜÀÀ</span>
+      <span>ç—…åŒºæ€»è§ˆ</span>
     </button>
     <button class="nav-item" data-view="patient">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span>»¼ÕßÏêÇé</span>
+      <span>æ‚£è€…è¯¦æƒ…</span>
     </button>
         <button class="nav-item" data-view="outcome">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      <span>×ª¹é¹ÜÀí</span>
+      <span>è½¬å½’ç®¡ç†</span>
     </button>
   </nav>
   <div class="sidebar-footer">
-    <button class="btn btn-sm btn-primary" onclick="showSyncPanel()" style="width:100%;margin-bottom:4px;justify-content:center;font-size:0.8rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Êı¾İÍ¬²½</button>
-    <span class="footer-badge" id="syncStatus">±¾µØÔËĞĞ ¡¤ Êı¾İ²»ÉÏ´«</span>
-    <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">¼ì²é¸üĞÂ</button>
-    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="²é¿´¸üĞÂÈÕÖ¾">v2.24.2</span>
+    <button class="btn btn-sm btn-primary" onclick="showSyncPanel()" style="width:100%;margin-bottom:4px;justify-content:center;font-size:0.8rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>æ•°æ®åŒæ­¥</button>
+    <span class="footer-badge" id="syncStatus">æœ¬åœ°è¿è¡Œ Â· æ•°æ®ä¸ä¸Šä¼ </span>
+    <button class="btn btn-sm" onclick="checkForUpdate(event)" style="width:100%;margin-top:4px;justify-content:center;font-size:0.7rem;">æ£€æŸ¥æ›´æ–°</button>
+    <span class="footer-version" onclick="showChangelog()" style="cursor:pointer;" title="æŸ¥çœ‹æ›´æ–°æ—¥å¿—">v2.24.2</span>
   </div>
   <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none">
-  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="¸üĞÂÈÕÖ¾">v2.24.2</span><button class="mini-update-btn" onclick="showSyncPanel()" title="Êı¾İÍ¬²½"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="¼ì²é¸üĞÂ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
+  <div class="sidebar-footer-mini"><span class="mini-version" onclick="showChangelog()" style="cursor:pointer;" title="æ›´æ–°æ—¥å¿—">v2.24.2</span><button class="mini-update-btn" onclick="showSyncPanel()" title="æ•°æ®åŒæ­¥"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 2 12 6"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button><button class="mini-update-btn" onclick="checkForUpdate(event)" title="æ£€æŸ¥æ›´æ–°"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
 </aside>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<!-- Ö÷ÄÚÈİÇø -->
+<!-- ä¸»å†…å®¹åŒº -->
 <main class="main-content" id="mainContent">
-  <!-- ¶¯Ì¬äÖÈ¾ -->
+  <!-- åŠ¨æ€æ¸²æŸ“ -->
 </main>
 
-<!-- Ä£Ì¬²ã -->
+<!-- æ¨¡æ€å±‚ -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
 <!-- Toast -->
@@ -69,12 +69,12 @@
 
 
 <script>
-// ICU ¹¤×÷Õ¾ v2.6 ¡ª ¶¨ÆÚÂÖÑ¯ + ¸üĞÂÍ¨Öªºá·ù
+// ICU å·¥ä½œç«™ v2.6 â€” å®šæœŸè½®è¯¢ + æ›´æ–°é€šçŸ¥æ¨ªå¹…
 const APP_VERSION = '202605292330';
 
 (async function bootstrap() {
   if (!('serviceWorker' in navigator)) return;
-  // === ÌáÈ¡ÔÆÅÌ·ÖÏíÊı¾İ£¨Cache ¡ú localStorage£¬·À°æ±¾ÖØÔØ¶ªÊ§£©===
+  // === æå–äº‘ç›˜åˆ†äº«æ•°æ®ï¼ˆCache â†’ localStorageï¼Œé˜²ç‰ˆæœ¬é‡è½½ä¸¢å¤±ï¼‰===
   try {
     const sharedCache = await caches.open('icu-shared');
     const resp = await sharedCache.match('/__shared__');
@@ -84,13 +84,13 @@ const APP_VERSION = '202605292330';
       localStorage.setItem('_icu_shared_import', text);
     }
   } catch(e) {}
-  // ÇåÀí URL ÖĞµÄ shared ±ê¼Ç
+  // æ¸…ç† URL ä¸­çš„ shared æ ‡è®°
   if (location.search.includes('shared=1')) {
     history.replaceState(null, '', './index.html');
   }
 
 
-  // === µÚÒ»µÀ·ÀÏß£º°æ±¾²»Æ¥Åä ¡ú ºËÇåÀí ===
+  // === ç¬¬ä¸€é“é˜²çº¿ï¼šç‰ˆæœ¬ä¸åŒ¹é… â†’ æ ¸æ¸…ç† ===
   const storedVer = localStorage.getItem('_app_version');
   
   if (storedVer !== APP_VERSION) {
@@ -104,12 +104,12 @@ const APP_VERSION = '202605292330';
     return;
   }
 
-  // === Õı³£×¢²á SW ===
+  // === æ­£å¸¸æ³¨å†Œ SW ===
   const reg = await navigator.serviceWorker.register('./sw.js');
   console.log('SW registered: ' + APP_VERSION);
   window._swReg = reg;
 
-  // === µ¼ÈëÔÆÅÌ·ÖÏíµÄÊı¾İ ===
+  // === å¯¼å…¥äº‘ç›˜åˆ†äº«çš„æ•°æ® ===
   const sharedData = localStorage.getItem('_icu_shared_import');
   if (sharedData) {
     localStorage.removeItem('_icu_shared_import');
@@ -125,12 +125,12 @@ const APP_VERSION = '202605292330';
     } catch(e) { console.warn('Shared import failed:', e); }
   }
 
-  // === ¼ì²âÊÇ·ñÓĞµÈ´ıÖĞµÄ¸üĞÂ ===
+  // === æ£€æµ‹æ˜¯å¦æœ‰ç­‰å¾…ä¸­çš„æ›´æ–° ===
   if (reg.waiting && navigator.serviceWorker.controller) {
     showUpdateBanner();
   }
 
-  // === ·¢ÏÖĞÂ SW Ê±×·×ÙÆä°²×°×´Ì¬ ===
+  // === å‘ç°æ–° SW æ—¶è¿½è¸ªå…¶å®‰è£…çŠ¶æ€ ===
   reg.addEventListener('updatefound', () => {
     const newWorker = reg.installing;
     if (!newWorker) return;
@@ -141,28 +141,28 @@ const APP_VERSION = '202605292330';
     });
   });
 
-  // === ¶¨ÆÚÂÖÑ¯¸üĞÂ£¨Ã¿ 5 ·ÖÖÓ£©===
+  // === å®šæœŸè½®è¯¢æ›´æ–°ï¼ˆæ¯ 5 åˆ†é’Ÿï¼‰===
   setInterval(() => {
     reg.update().catch(() => {});
   }, 5 * 60 * 1000);
 
-  // === Ò³Ãæ»Ö¸´¿É¼ûÊ±Á¢¼´¼ì²é ===
+  // === é¡µé¢æ¢å¤å¯è§æ—¶ç«‹å³æ£€æŸ¥ ===
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       reg.update().catch(() => {});
     }
   });
 
-  // === ÏûÏ¢¼àÌı ===
+  // === æ¶ˆæ¯ç›‘å¬ ===
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (!event.data) return;
-    // SW ¼¤»îºóÍ¨ÖªË¢ĞÂ
+    // SW æ¿€æ´»åé€šçŸ¥åˆ·æ–°
     if (event.data.type === 'sw-updated') {
       console.log('SW updated to: ' + event.data.version);
       localStorage.setItem('_app_version', APP_VERSION);
       location.reload();
     }
-    // ÔÆÅÌ·ÖÏíÎÄ¼şµ¼Èë
+    // äº‘ç›˜åˆ†äº«æ–‡ä»¶å¯¼å…¥
     if (event.data.type === 'shared-file') {
       try {
         const imported = JSON.parse(event.data.content);
@@ -177,19 +177,19 @@ const APP_VERSION = '202605292330';
   });
 })();
 
-// === ÏÔÊ¾¸üĞÂºá·ù ===
+// === æ˜¾ç¤ºæ›´æ–°æ¨ªå¹… ===
 function showUpdateBanner() {
   if (document.getElementById('updateBanner')) return;
   const banner = document.createElement('div');
   banner.id = 'updateBanner';
   banner.className = 'update-banner';
-  banner.innerHTML = '<span class="update-banner-text">¼ì²âµ½ĞÂ°æ±¾</span><button class="update-banner-btn" id="btnUpdateNow">Á¢¼´¸üĞÂ</button><button class="update-banner-close" id="btnUpdateDismiss">\u2715</button>';
+  banner.innerHTML = '<span class="update-banner-text">æ£€æµ‹åˆ°æ–°ç‰ˆæœ¬</span><button class="update-banner-btn" id="btnUpdateNow">ç«‹å³æ›´æ–°</button><button class="update-banner-close" id="btnUpdateDismiss">\u2715</button>';
   document.body.appendChild(banner);
   document.getElementById('btnUpdateNow').onclick = skipWaitingAndReload;
   document.getElementById('btnUpdateDismiss').onclick = () => { banner.style.display = 'none'; };
 }
 
-// === Í¨ÖªµÈ´ıÖĞµÄ SW Á¢¼´¼¤»î£¬È»ºóË¢ĞÂ ===
+// === é€šçŸ¥ç­‰å¾…ä¸­çš„ SW ç«‹å³æ¿€æ´»ï¼Œç„¶ååˆ·æ–° ===
 function skipWaitingAndReload() {
   navigator.serviceWorker.getRegistration().then((r) => {
     if (r && r.waiting) {
@@ -201,7 +201,7 @@ function skipWaitingAndReload() {
     location.reload();
   }, 300);
 }
-// === ²à±ßÀ¸ºº±¤²Ëµ¥ÇĞ»»£¨´¥¿ØÓÅ»¯£©===
+// === ä¾§è¾¹æ æ±‰å ¡èœå•åˆ‡æ¢ï¼ˆè§¦æ§ä¼˜åŒ–ï¼‰===
 (function setupSidebarToggle() {
   var sidebar = document.getElementById('sidebar');
   var toggle = document.getElementById('sidebarToggle');
@@ -212,10 +212,10 @@ function skipWaitingAndReload() {
   function close() { sidebar.classList.remove('expanded'); overlay.classList.remove('active'); }
   function toggleFn(e) { e.preventDefault(); sidebar.classList.contains('expanded') ? close() : open(); }
 
-  // Í¬Ê±°ó¶¨ click ºÍ touchend£¨·ÀÖ¹Ä³Ğ©°²×¿WebView click ²»´¥·¢£©
+  // åŒæ—¶ç»‘å®š click å’Œ touchendï¼ˆé˜²æ­¢æŸäº›å®‰å“WebView click ä¸è§¦å‘ï¼‰
   toggle.addEventListener('click', toggleFn);
   toggle.addEventListener('touchend', function(e) {
-    // Ö»ÔÚ²»Ö§³Ö pointer ÊÂ¼şµÄ³¡¾°ÏÂÓÃ touchend ¶µµ×
+    // åªåœ¨ä¸æ”¯æŒ pointer äº‹ä»¶çš„åœºæ™¯ä¸‹ç”¨ touchend å…œåº•
     if (!window.PointerEvent) { toggleFn(e); }
   });
   overlay.addEventListener('click', close);
@@ -231,10 +231,10 @@ function skipWaitingAndReload() {
 })();
 
 
-// === ÊÖ¶¯¼ì²é¸üĞÂ ===
+// === æ‰‹åŠ¨æ£€æŸ¥æ›´æ–° ===
 function checkForUpdate(e) {
   const btn = e.target;
-  btn.textContent = '¼ì²éÖĞ...';
+  btn.textContent = 'æ£€æŸ¥ä¸­...';
   btn.disabled = true;
   if (window._swReg) {
     window._swReg.update().then(() => {
@@ -242,16 +242,16 @@ function checkForUpdate(e) {
         if (window._swReg.waiting) {
           showUpdateBanner();
         }
-        btn.textContent = 'ÒÑÊÇ×îĞÂ';
-        setTimeout(() => { btn.textContent = '¼ì²é¸üĞÂ'; btn.disabled = false; }, 2000);
+        btn.textContent = 'å·²æ˜¯æœ€æ–°';
+        setTimeout(() => { btn.textContent = 'æ£€æŸ¥æ›´æ–°'; btn.disabled = false; }, 2000);
       }, 500);
     }).catch(() => {
-      btn.textContent = '¼ì²éÊ§°Ü';
-      setTimeout(() => { btn.textContent = '¼ì²é¸üĞÂ'; btn.disabled = false; }, 2000);
+      btn.textContent = 'æ£€æŸ¥å¤±è´¥';
+      setTimeout(() => { btn.textContent = 'æ£€æŸ¥æ›´æ–°'; btn.disabled = false; }, 2000);
     });
   } else {
-    btn.textContent = 'SW Î´×¢²á';
-    setTimeout(() => { btn.textContent = '¼ì²é¸üĞÂ'; btn.disabled = false; }, 2000);
+    btn.textContent = 'SW æœªæ³¨å†Œ';
+    setTimeout(() => { btn.textContent = 'æ£€æŸ¥æ›´æ–°'; btn.disabled = false; }, 2000);
   }
 }
 </script></body>
