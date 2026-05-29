@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.21.1", date:"2026-05-29", changes:[
+    "病区总览卡片新增待办事项概览（未完成数+预览）",
+  ]},
   { v:"v2.21", date:"2026-05-29", changes:[
     "新增患者待办事项卡片：添加/完成/删除",
     "待办完成自动划线置底，未完成置顶",
@@ -397,7 +400,20 @@ function buildPatientCard(p) {
   }
   if (latestMicro) card += '<span>病原学: ' + escHtml(latestMicro.organism || '待报') + '</span>';
   if (activeAbx.length > 0) card += '<span>抗感染: ' + activeAbx.length + ' 种</span>';
-  card += '</div></div>';
+  card += '</div>';
+  // 待办事项概览
+  if (p.tasks && p.tasks.length > 0) {
+    var incomplete = p.tasks.filter(function(t) { return !t.done; });
+    var done = p.tasks.length - incomplete.length;
+    card += '<div class="patient-card-tasks">';
+    if (incomplete.length > 0) {
+      card += '<span class="task-badge task-badge-pending">' + incomplete.length + ' 待办</span>';
+      card += '<span class="task-preview">' + escHtml(incomplete.slice(0,2).map(function(t){return t.text;}).join(' / ')) + (incomplete.length > 2 ? '...' : '') + '</span>';
+    }
+    if (done > 0) card += '<span class="task-badge task-badge-done">' + done + ' 已完成</span>';
+    card += '</div>';
+  }
+  card += '</div>';
   return card;
 }
 

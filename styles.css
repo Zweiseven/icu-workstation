@@ -813,3 +813,10 @@ body {
 .task-delete { background: none; border: none; color: var(--text-muted); font-size: 1.1rem; cursor: pointer; padding: 0 4px; line-height: 1; opacity: 0; transition: opacity 0.15s; }
 .task-item:hover .task-delete { opacity: 1; }
 .task-delete:hover { color: var(--danger); }
+
+/* 总览卡片待办 */
+.patient-card-tasks { display: flex; align-items: center; gap: 8px; padding-top: 6px; margin-top: 6px; border-top: 1px solid var(--border); font-size: 0.73rem; flex-wrap: wrap; }
+.task-badge { padding: 1px 7px; border-radius: 3px; font-weight: 600; }
+.task-badge-pending { background: #fff3e0; color: #e65100; }
+.task-badge-done { background: #e8f5e9; color: #2e7d32; }
+.task-preview { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
