@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    ICU 工作站 v2.0 — 重症医学科患者管理系统
    主应用逻辑
    ============================================ */
@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.24.3", date:"2026-05-29", changes:[
+    "诊疗记录按时间降序排列（最新的在上面）",
+  ]},
   { v:"v2.24.2", date:"2026-05-29", changes:[
     "患者详情切换条和病区总览卡片按床位号数字排序（修复字符串排序导致37排在8前面的问题）",
   ]},
@@ -1004,12 +1007,12 @@ function renderNoteBadge(cat, label) {
 }
 
 function renderTreatmentNotes(p) {
-  // 按时间升序，同日 plan/event 优先
+  // 按时间降序，同日 event/plan 优先
   var catOrder = { event: 0, plan: 1, change: 2, daily: 3 };
   var notes = [...p.treatmentNotes].sort(function(a, b) {
     var da = (a.timestamp || '').substring(0, 10);
     var db = (b.timestamp || '').substring(0, 10);
-    if (da !== db) return da.localeCompare(db);
+    if (da !== db) return db.localeCompare(da);
     return (catOrder[a.category] || 9) - (catOrder[b.category] || 9);
   });
   const dailyNotes = notes.filter(n => n.category === 'daily');
