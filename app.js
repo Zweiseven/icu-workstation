@@ -53,6 +53,11 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.23", date:"2026-05-29", changes:[
+    "诊疗排序：事件优先于下一步计划",
+    "ICU入住超48h提醒低调化（Info图标+中性色）",
+    "抗生素一键停用（自动填日期）+ 停用排后",
+  ]},
   { v:"v2.22", date:"2026-05-29", changes:[
     "抗生素使用追踪支持编辑和删除",
     "移除待办事项模块，下一步计划替代（总览可见）",
@@ -687,7 +692,9 @@ function renderPatientMicro(container, p) {
 
   if (p.antibiotics && p.antibiotics.length > 0) {
     html += '<table class="data-table"><thead><tr><th>药物</th><th>开始日期</th><th>停药日期</th><th>剂量</th><th>途径</th><th>天数</th><th>状态</th></tr></thead><tbody>';
-    p.antibiotics.forEach((a, idx) => {
+    var abxSorted = [...p.antibiotics].sort(function(a, b) { if (!a.endDate && b.endDate) return -1; if (a.endDate && !b.endDate) return 1; return 0; });
+    abxSorted.forEach((a) => {
+      var idx = p.antibiotics.indexOf(a);
       const startDate = a.startDate ? new Date(a.startDate) : null;
       const endDate = a.endDate ? new Date(a.endDate) : null;
       const days = startDate ? Math.floor(((endDate || new Date()) - startDate) / 86400000) : 0;
@@ -695,7 +702,8 @@ function renderPatientMicro(container, p) {
       if (endDate) { abxClass = 'abx-ok'; statusText = '已停用'; }
       else if (days >= 10) { abxClass = 'abx-review'; statusText = '需评估!'; }
       else if (days >= 7) { abxClass = 'abx-warn'; statusText = '关注'; }
-      html += '<tr><td><strong>' + escHtml(a.drug) + '</strong></td><td>' + escHtml(a.startDate || '—') + '</td><td>' + escHtml(a.endDate || '—') + '</td><td>' + escHtml(a.dose || '—') + '</td><td>' + escHtml(a.route || '—') + '</td><td><span class="abx-days-badge ' + abxClass + '">' + days + '天</span></td><td><span style="font-size:0.75rem;">' + statusText + '</span> <button class="btn btn-sm" onclick="editAntibiotic(\'' + p.id + '\', ' + idx + ')" style="font-size:0.65rem;padding:0 6px;">编辑</button></td></tr>';
+      var stopBtn = endDate ? '' : ' <button class="btn btn-sm" onclick="event.stopPropagation();stopAntibiotic(\'' + p.id + '\', ' + idx + ')" style="font-size:0.65rem;padding:0 6px;">停用</button>';
+      html += '<tr><td><strong>' + escHtml(a.drug) + '</strong></td><td>' + escHtml(a.startDate || '—') + '</td><td>' + escHtml(a.endDate || '—') + '</td><td>' + escHtml(a.dose || '—') + '</td><td>' + escHtml(a.route || '—') + '</td><td><span class="abx-days-badge ' + abxClass + '">' + days + '天</span></td><td><span style="font-size:0.75rem;">' + statusText + '</span>' + stopBtn + ' <button class="btn btn-sm" onclick="editAntibiotic(\'' + p.id + '\', ' + idx + ')" style="font-size:0.65rem;padding:0 6px;">编辑</button></td></tr>';
     });
     html += '</tbody></table>';
   } else {
@@ -989,7 +997,7 @@ function renderNoteBadge(cat, label) {
 
 function renderTreatmentNotes(p) {
   // 按时间升序，同日 plan/event 优先
-  var catOrder = { plan: 0, event: 1, change: 2, daily: 3 };
+  var catOrder = { event: 0, plan: 1, change: 2, daily: 3 };
   var notes = [...p.treatmentNotes].sort(function(a, b) {
     var da = (a.timestamp || '').substring(0, 10);
     var db = (b.timestamp || '').substring(0, 10);
@@ -1162,6 +1170,13 @@ function editAntibiotic(pid, idx) {
   }, 50);
 }
 
+function stopAntibiotic(pid, idx) {
+  const p = getPatient(pid);
+  if (!p || !p.antibiotics || !p.antibiotics[idx]) return;
+  p.antibiotics[idx].endDate = new Date().toISOString().split('T')[0];
+  saveState(); renderPatientSubTab('micro'); toast('抗生素已停用', 'success');
+}
+
 
 // ICU入住超48h检测
 function icuHours(admissionDate) {
@@ -1183,11 +1198,11 @@ function get48hAlerts() {
 }
 
 function render48hAlerts(alerts) {
-  let html = '<div class="alert-48h-section"><div class="alert-48h-header"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>ICU入住超48h评估提醒</div><div class="alert-48h-list">';
+  let html = '<div class="alert-48h-section"><div class="alert-48h-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>入住超48h</div><div class="alert-48h-list">';
   alerts.forEach(a => {
     const p = a.patient;
     html += '<div class="alert-48h-card" onclick="openPatient(\'' + p.id + '\')">' +
-      '<div class="alert-48h-card-top"><span class="alert-48h-name">' + escHtml(p.name) + '</span><span class="alert-48h-bed">' + escHtml(p.bed) + '</span><span class="alert-48h-badge badge-warn">' + Math.floor(a.hours / 24) + '天</span></div>' +
+      '<div class="alert-48h-card-top"><span class="alert-48h-name">' + escHtml(p.name) + '</span><span class="alert-48h-bed">' + escHtml(p.bed) + '</span><span class="alert-48h-badge badge-neutral">' + Math.floor(a.hours / 24) + '天</span></div>' +
       '<div class="alert-48h-checks">' +
         '<div class="alert-48h-check' + (a.enStarted ? ' check-ok' : ' check-fail') + '">' +
           '<span class="alert-48h-dot"></span>' +
