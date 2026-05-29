@@ -53,6 +53,9 @@ const OUTCOME_STATS = [
 
 // --- 版本更新日志 ---
 const VERSION_HISTORY = [
+  { v:"v2.23.1", date:"2026-05-29", changes:[
+    "修复总览下一步计划预览文字截断问题",
+  ]},
   { v:"v2.23", date:"2026-05-29", changes:[
     "诊疗排序：事件优先于下一步计划",
     "ICU入住超48h提醒低调化（Info图标+中性色）",

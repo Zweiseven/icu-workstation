@@ -816,4 +816,4 @@ body {
 .task-badge { padding: 1px 7px; border-radius: 3px; font-weight: 600; }
 .task-badge-pending { background: #fff3e0; color: #e65100; }
 .task-badge-done { background: #e8f5e9; color: #2e7d32; }
-.task-preview { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.task-preview { color: var(--text-muted); flex: 1; min-width: 0; word-break: break-all; line-height: 1.4; }
